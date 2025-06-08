@@ -7,6 +7,9 @@ from datetime import datetime
 SHEET_ID = "13R_3Mdr25Jd-nGhK7CxdcbKkFWLc0LPdYrOLOY8sZJo"
 WORKSHEET_NAME = "Principal"
 
+# Primero copiás el dict de secretos a 'info'
+info = st.secrets["gcp_service_account"].copy()
+
 # Autenticación desde Streamlit secrets
 info["private_key"] = info["private_key"].replace("\\n", "\n")
 
