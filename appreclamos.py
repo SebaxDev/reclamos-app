@@ -8,6 +8,8 @@ SHEET_ID = "13R_3Mdr25Jd-nGhK7CxdcbKkFWLc0LPdYrOLOY8sZJo"
 WORKSHEET_NAME = "Principal"
 
 # Autenticación desde Streamlit secrets
+info["private_key"] = info["private_key"].replace("\\n", "\n")
+
 credentials = service_account.Credentials.from_service_account_info(
     st.secrets["gcp_service_account"],
     scopes=["https://www.googleapis.com/auth/spreadsheets",
