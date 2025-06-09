@@ -7,8 +7,8 @@ import pandas as pd
 
 # --- CONFIGURACIÓN ---
 SHEET_ID = "13R_3Mdr25Jd-nGhK7CxdcbKkFWLc0LPdYrOLOY8sZJo"
-WORKSHEET_NAME_RECLAMOS = "Principal"
-WORKSHEET_NAME_CLIENTES = "Clientes"
+WORKSHEET_RECLAMOS = "Principal"
+WORKSHEET_CLIENTES = "Clientes"
 
 # --- AUTENTICACIÓN USANDO SECRETS ---
 info = dict(st.secrets["gcp_service_account"])
@@ -21,8 +21,8 @@ credentials = service_account.Credentials.from_service_account_info(
 )
 
 client = gspread.authorize(credentials)
-sheet_reclamos = client.open_by_key(SHEET_ID).worksheet(WORKSHEET_NAME_RECLAMOS)
-sheet_clientes = client.open_by_key(SHEET_ID).worksheet(WORKSHEET_NAME_CLIENTES)
+sheet_reclamos = client.open_by_key(SHEET_ID).worksheet(WORKSHEET_RECLAMOS)
+sheet_clientes = client.open_by_key(SHEET_ID).worksheet(WORKSHEET_CLIENTES)
 
 # --- CARGAR BASE DE CLIENTES ---
 clientes_data = sheet_clientes.get_all_records()
@@ -31,18 +31,19 @@ df_clientes = pd.DataFrame(clientes_data)
 # --- TÍTULO ---
 st.title("📋 Fusion Reclamos App")
 
-# --- FORMULARIO ---
+# --- INGRESAR N° DE CLIENTE ANTES DEL FORM ---
+nro_cliente = st.text_input("🔢 N° de Cliente")
+
+cliente_existente = None
+if "Nº Cliente" in df_clientes.columns and nro_cliente:
+    filtro = df_clientes[df_clientes["Nº Cliente"] == nro_cliente]
+    if not filtro.empty:
+        cliente_existente = filtro.squeeze()
+        st.success("Cliente reconocido, formulario auto-completado.")
+
+# --- FORMULARIO PRINCIPAL ---
 with st.form("reclamo_formulario"):
-    nro_cliente = st.text_input("🔢 N° de Cliente")
-
-    cliente_existente = None
-    if "Nº Cliente" in df_clientes.columns and nro_cliente:
-        filtro = df_clientes[df_clientes["Nº Cliente"] == nro_cliente]
-        if not filtro.empty:
-            cliente_existente = filtro.squeeze()
-
     if cliente_existente is not None:
-        st.success("Cliente reconocido, datos cargados automáticamente.")
         sector = st.text_input("🏙️ Sector / Zona", value=cliente_existente["Sector"])
         nombre = st.text_input("👤 Nombre del Cliente", value=cliente_existente["Nombre"])
         direccion = st.text_input("📍 Dirección", value=cliente_existente["Dirección"])
