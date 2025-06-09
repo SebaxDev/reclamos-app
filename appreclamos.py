@@ -2,6 +2,7 @@ import streamlit as st
 from google.oauth2 import service_account
 import gspread
 from datetime import datetime
+import pytz
 
 # --- CONFIGURACIÓN ---
 SHEET_ID = "13R_3Mdr25Jd-nGhK7CxdcbKkFWLc0LPdYrOLOY8sZJo"
@@ -48,7 +49,8 @@ with st.form("reclamo_formulario"):
 
 # --- GUARDADO ---
 if enviado:
-    fecha_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    argentina = pytz.timezone("America/Argentina/Buenos_Aires")
+    fecha_hora = datetime.now(argentina).strftime("%d-%m-%Y %H:%M")
     fila = [
         fecha_hora,
         nro_cliente,
