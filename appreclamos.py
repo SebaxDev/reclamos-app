@@ -40,7 +40,6 @@ with st.form("reclamo_formulario"):
 
     detalles = st.text_area("📝 Detalles del Reclamo")
     estado = st.selectbox("⚙️ Estado del Reclamo", ["Pendiente", "En curso", "Resuelto"], index=0)
-
     tecnico = st.text_input("👷 Técnico asignado (opcional)")
     nota = st.text_area("🗒️ Nota o seguimiento (opcional)")
 
@@ -114,8 +113,9 @@ try:
     # Guardar cambios
     if st.button("💾 Guardar cambios en Google Sheets"):
         try:
+            edited_df = edited_df.astype(str)  # Convertir todo a texto
             sheet.clear()
-            sheet.append_row(df.columns.tolist())
+            sheet.append_row(edited_df.columns.tolist())
             sheet.append_rows(edited_df.values.tolist())
             st.success("✅ Cambios guardados correctamente.")
         except Exception as e:
