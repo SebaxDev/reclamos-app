@@ -24,19 +24,22 @@ client = gspread.authorize(credentials)
 sheet_reclamos = client.open_by_key(SHEET_ID).worksheet(WORKSHEET_NAME_RECLAMOS)
 sheet_clientes = client.open_by_key(SHEET_ID).worksheet(WORKSHEET_NAME_CLIENTES)
 
-# --- TÍTULO ---
-st.title("📋 Fusion Reclamos App")
-
 # --- CARGAR BASE DE CLIENTES ---
 clientes_data = sheet_clientes.get_all_records()
 df_clientes = pd.DataFrame(clientes_data)
+
+# --- TÍTULO ---
+st.title("📋 Fusion Reclamos App")
 
 # --- FORMULARIO ---
 with st.form("reclamo_formulario"):
     nro_cliente = st.text_input("🔢 N° de Cliente")
 
-    # Si el número existe, rellenamos automáticamente
-    cliente_existente = df_clientes[df_clientes["Nº Cliente"] == nro_cliente].squeeze() if nro_cliente in df_clientes["Nº Cliente"].values else None
+    cliente_existente = None
+    if "Nº Cliente" in df_clientes.columns and nro_cliente:
+        filtro = df_clientes[df_clientes["Nº Cliente"] == nro_cliente]
+        if not filtro.empty:
+            cliente_existente = filtro.squeeze()
 
     if cliente_existente is not None:
         st.success("Cliente reconocido, datos cargados automáticamente.")
@@ -86,7 +89,7 @@ if enviado:
             sheet_reclamos.append_row(fila_reclamo)
             st.success("✅ Reclamo guardado correctamente.")
 
-            # Si el cliente no existe, guardarlo
+            # Guardar cliente si no existe
             if cliente_existente is None:
                 fila_cliente = [nro_cliente, sector, nombre, direccion, telefono]
                 sheet_clientes.append_row(fila_cliente)
@@ -103,11 +106,9 @@ try:
     data = sheet_reclamos.get_all_records()
     df = pd.DataFrame(data)
 
-    # Convertir fecha
     df["Fecha y hora"] = pd.to_datetime(df["Fecha y hora"], format="%Y-%m-%d %H:%M:%S", errors="coerce")
     df = df.sort_values("Fecha y hora", ascending=False)
 
-    # Filtros
     col1, col2, col3 = st.columns(3)
     with col1:
         filtro_estado = st.selectbox("🔎 Filtrar por estado", ["Todos"] + sorted(df["Estado"].unique()))
@@ -116,7 +117,6 @@ try:
     with col3:
         filtro_tipo = st.selectbox("📌 Filtrar por tipo", ["Todos"] + sorted(df["Tipo de reclamo"].unique()))
 
-    # Aplicar filtros
     if filtro_estado != "Todos":
         df = df[df["Estado"] == filtro_estado]
     if filtro_sector != "Todos":
@@ -124,7 +124,6 @@ try:
     if filtro_tipo != "Todos":
         df = df[df["Tipo de reclamo"] == filtro_tipo]
 
-    # Tabla editable
     edited_df = st.data_editor(
         df,
         use_container_width=True,
@@ -137,7 +136,6 @@ try:
         }
     )
 
-    # Guardar cambios
     if st.button("💾 Guardar cambios en Google Sheets"):
         try:
             edited_df = edited_df.astype(str)
