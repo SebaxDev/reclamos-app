@@ -7,11 +7,10 @@ from datetime import datetime
 SHEET_ID = "13R_3Mdr25Jd-nGhK7CxdcbKkFWLc0LPdYrOLOY8sZJo"
 WORKSHEET_NAME = "Principal"
 
-# Preparar el secret para que la clave tenga saltos de línea reales
-info = st.secrets["gcp_service_account"].copy()
+# Convertir el secret a dict si es necesario (por seguridad)
+info = dict(st.secrets["gcp_service_account"])
 info["private_key"] = info["private_key"].replace("\\n", "\n")
 
-# Usar el dict ya corregido
 credentials = service_account.Credentials.from_service_account_info(
     info,
     scopes=["https://www.googleapis.com/auth/spreadsheets",
