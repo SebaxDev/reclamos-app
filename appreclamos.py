@@ -7,14 +7,13 @@ from datetime import datetime
 SHEET_ID = "13R_3Mdr25Jd-nGhK7CxdcbKkFWLc0LPdYrOLOY8sZJo"
 WORKSHEET_NAME = "Principal"
 
-# Primero copiás el dict de secretos a 'info'
+# Preparar el secret para que la clave tenga saltos de línea reales
 info = st.secrets["gcp_service_account"].copy()
-
-# Autenticación desde Streamlit secrets
 info["private_key"] = info["private_key"].replace("\\n", "\n")
 
+# Usar el dict ya corregido
 credentials = service_account.Credentials.from_service_account_info(
-    st.secrets["gcp_service_account"],
+    info,
     scopes=["https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive"]
 )
