@@ -172,3 +172,39 @@ try:
 
 except Exception as e:
     st.warning(f"⚠️ No se pudieron cargar los datos: {e}")
+
+# --- EDICIÓN DE CLIENTES ---
+st.markdown("---")
+st.subheader("🛠️ Editar datos de un cliente")
+
+cliente_editar = st.text_input("🔎 Ingresá N° de Cliente a editar").strip()
+
+if cliente_editar:
+    df_clientes["Nº Cliente"] = df_clientes["Nº Cliente"].astype(str).str.strip()
+    cliente_row = df_clientes[df_clientes["Nº Cliente"] == cliente_editar]
+
+    if not cliente_row.empty:
+        cliente_actual = cliente_row.squeeze()
+
+        st.info("Cliente encontrado. Modificá los datos y presioná 'Actualizar'.")
+
+        nuevo_sector = st.text_input("🏙️ Sector", value=cliente_actual["Sector"])
+        nuevo_nombre = st.text_input("👤 Nombre", value=cliente_actual["Nombre"])
+        nueva_direccion = st.text_input("📍 Dirección", value=cliente_actual["Dirección"])
+        nuevo_telefono = st.text_input("📞 Teléfono", value=cliente_actual["Teléfono"])
+
+        if st.button("💾 Actualizar datos del cliente"):
+            try:
+                # Obtener índice en la hoja
+                index = cliente_row.index[0] + 2  # +2 porque get_all_records omite encabezado y es base-0
+
+                sheet_clientes.update(f"B{index}", nuevo_sector)
+                sheet_clientes.update(f"C{index}", nuevo_nombre)
+                sheet_clientes.update(f"D{index}", nueva_direccion)
+                sheet_clientes.update(f"E{index}", nuevo_telefono)
+
+                st.success("✅ Cliente actualizado correctamente.")
+            except Exception as e:
+                st.error(f"❌ Error al actualizar: {e}")
+    else:
+        st.warning("⚠️ Cliente no encontrado.")
