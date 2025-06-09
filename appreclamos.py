@@ -3,11 +3,11 @@ from google.oauth2 import service_account
 import gspread
 from datetime import datetime
 
-# --- Conectar con Google Sheets usando secrets ---
+# --- CONFIGURACIÓN ---
 SHEET_ID = "13R_3Mdr25Jd-nGhK7CxdcbKkFWLc0LPdYrOLOY8sZJo"
 WORKSHEET_NAME = "Principal"
 
-# Convertir el secret a dict si es necesario (por seguridad)
+# --- AUTENTICACIÓN USANDO SECRETS ---
 info = dict(st.secrets["gcp_service_account"])
 info["private_key"] = info["private_key"].replace("\\n", "\n")
 
@@ -20,10 +20,10 @@ credentials = service_account.Credentials.from_service_account_info(
 client = gspread.authorize(credentials)
 sheet = client.open_by_key(SHEET_ID).worksheet(WORKSHEET_NAME)
 
-# --- Título ---
+# --- TÍTULO ---
 st.title("📋 Fusion Reclamos App")
 
-# --- Formulario ---
+# --- FORMULARIO ---
 with st.form("reclamo_formulario"):
     nro_cliente = st.text_input("🔢 N° de Cliente")
     sector = st.text_input("🏙️ Sector / Zona")
@@ -37,12 +37,16 @@ with st.form("reclamo_formulario"):
     )
 
     detalles = st.text_area("📝 Detalles del Reclamo")
-    
-    estado = st.selectbox("⚙️ Estado del Reclamo", ["Pendiente", "En curso", "Resuelto"], index=0)
+
+    estado = st.selectbox(
+        "⚙️ Estado del Reclamo",
+        ["Pendiente", "En curso", "Resuelto"],
+        index=0
+    )
 
     enviado = st.form_submit_button("✅ Guardar Reclamo")
 
-# --- Guardar en la hoja ---
+# --- GUARDADO ---
 if enviado:
     fecha_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     fila = [
