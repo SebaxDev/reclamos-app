@@ -57,13 +57,33 @@ with st.form("reclamo_formulario"):
 
     tipo_reclamo = st.selectbox(
         "📌 Tipo de Reclamo",
-        ["Sin señal", "Internet lento", "Cable cortado", "Cambio de equipo", "Corte total", "Otros"]
+        [
+            "Conexion C+I",
+            "Conexion Cable",
+            "Conexion Internet",
+            "Suma Internet",
+            "Suma Cable",
+            "Reconexion",
+            "Sin Señal Ambos",
+            "Sin Señal Cable",
+            "Sin Señal Internet",
+            "Sintonia",
+            "Interferencia",
+            "Traslado",
+            "Extension x2",
+            "Extension x3",
+            "Extension x4",
+            "Cambio de Ficha",
+            "Cambio de Equipo",
+            "Reclamo"
+        ]
     )
 
     detalles = st.text_area("📝 Detalles del Reclamo")
     estado = st.selectbox("⚙️ Estado del Reclamo", ["Pendiente", "En curso", "Resuelto"], index=0)
     tecnico = st.text_input("👷 Técnico asignado (opcional)")
     nota = st.text_area("🗒️ Nota o seguimiento (opcional)")
+    atendido_por = st.text_input("👤 Atendido por")
     enviado = st.form_submit_button("✅ Guardar Reclamo")
 
 # --- GUARDADO ---
@@ -85,7 +105,8 @@ if enviado:
             detalles,
             estado,
             tecnico,
-            nota
+            nota,
+            atendido_por
         ]
 
         try:
