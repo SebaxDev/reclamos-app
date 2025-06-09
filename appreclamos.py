@@ -185,26 +185,29 @@ if cliente_editar:
     else:
         st.warning("⚠️ Cliente no encontrado.")
 
-# --- PLANTILLA COMPACTA PARA IMPRESIÓN DE 3 RECLAMOS ---
+# --- SELECCIÓN E IMPRESIÓN DE RECLAMOS EN PDF COMPACTO ---
 st.markdown("---")
-st.subheader("🖨️ Imprimir los últimos 3 reclamos (formato técnico compacto)")
+st.subheader("🖨️ Seleccionar reclamos para imprimir (formato técnico compacto)")
 
-if st.button("📄 Generar PDF compacto"):
-    try:
-        data = sheet_reclamos.get_all_records()
-        if len(data) == 0:
-            st.warning("⚠️ No hay reclamos cargados aún.")
-        else:
-            ultimos = data[-3:] if len(data) >= 3 else data
+try:
+    data = sheet_reclamos.get_all_records()
+    df_pdf = pd.DataFrame(data)
 
+    if not df_pdf.empty:
+        df_pdf["Seleccionar"] = False
+        selected = st.multiselect("Seleccioná los reclamos a imprimir:", df_pdf.index, format_func=lambda x: f"{df_pdf.at[x, 'Fecha y hora']} - {df_pdf.at[x, 'Nombre']}")
+
+        if st.button("📄 Generar PDF con seleccionados") and selected:
             buffer = io.BytesIO()
             c = canvas.Canvas(buffer, pagesize=A4)
             width, height = A4
             y = height - 40
 
-            for i, reclamo in enumerate(ultimos):
+            for i, idx in enumerate(selected):
+                reclamo = df_pdf.loc[idx]
+
                 c.setFont("Helvetica-Bold", 11)
-                c.drawString(40, y, f"Reclamo #{len(data) - len(ultimos) + i + 1}")
+                c.drawString(40, y, f"Reclamo #{idx + 1}")
                 y -= 15
 
                 c.setFont("Helvetica", 9)
@@ -224,9 +227,9 @@ if st.button("📄 Generar PDF compacto"):
                 c.drawString(40, y, "Firma técnico: _____________________________")
                 y -= 25
 
-                if i < len(ultimos) - 1:
-                    c.line(30, y, width - 30, y)
-                    y -= 20
+                if y < 150 and i < len(selected) - 1:
+                    c.showPage()
+                    y = height - 40
 
             c.save()
             buffer.seek(0)
@@ -234,9 +237,12 @@ if st.button("📄 Generar PDF compacto"):
             st.download_button(
                 label="📥 Descargar PDF",
                 data=buffer,
-                file_name="reclamos_compacto.pdf",
+                file_name="reclamos_seleccionados.pdf",
                 mime="application/pdf"
             )
 
-    except Exception as e:
-        st.error(f"❌ Error al generar PDF: {e}")
+    else:
+        st.info("No hay reclamos disponibles para imprimir.")
+
+except Exception as e:
+    st.error(f"❌ Error al generar PDF: {e}")
