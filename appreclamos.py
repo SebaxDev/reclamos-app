@@ -4,6 +4,9 @@ import gspread
 from datetime import datetime
 import pytz
 import pandas as pd
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+import io
 
 # --- CONFIGURACIÓN ---
 SHEET_ID = "13R_3Mdr25Jd-nGhK7CxdcbKkFWLc0LPdYrOLOY8sZJo"
@@ -58,24 +61,11 @@ with st.form("reclamo_formulario"):
     tipo_reclamo = st.selectbox(
         "📌 Tipo de Reclamo",
         [
-            "Conexion C+I",
-            "Conexion Cable",
-            "Conexion Internet",
-            "Suma Internet",
-            "Suma Cable",
-            "Reconexion",
-            "Sin Señal Ambos",
-            "Sin Señal Cable",
-            "Sin Señal Internet",
-            "Sintonia",
-            "Interferencia",
-            "Traslado",
-            "Extension x2",
-            "Extension x3",
-            "Extension x4",
-            "Cambio de Ficha",
-            "Cambio de Equipo",
-            "Reclamo"
+            "Conexion C+I", "Conexion Cable", "Conexion Internet", "Suma Internet",
+            "Suma Cable", "Reconexion", "Sin Señal Ambos", "Sin Señal Cable",
+            "Sin Señal Internet", "Sintonia", "Interferencia", "Traslado",
+            "Extension x2", "Extension x3", "Extension x4", "Cambio de Ficha",
+            "Cambio de Equipo", "Reclamo"
         ]
     )
 
@@ -95,25 +85,14 @@ if enviado:
         fecha_hora = datetime.now(argentina).strftime("%Y-%m-%d %H:%M:%S")
 
         fila_reclamo = [
-            fecha_hora,
-            nro_cliente,
-            sector,
-            nombre,
-            direccion,
-            telefono,
-            tipo_reclamo,
-            detalles,
-            estado,
-            tecnico,
-            nota,
-            atendido_por
+            fecha_hora, nro_cliente, sector, nombre, direccion, telefono,
+            tipo_reclamo, detalles, estado, tecnico, nota, atendido_por
         ]
 
         try:
             sheet_reclamos.append_row(fila_reclamo)
             st.success("✅ Reclamo guardado correctamente.")
 
-            # Verificar si el cliente ya está cargado
             df_clientes["Nº Cliente"] = df_clientes["Nº Cliente"].astype(str).str.strip()
             if nro_cliente not in df_clientes["Nº Cliente"].values:
                 fila_cliente = [nro_cliente, sector, nombre, direccion, telefono]
@@ -195,72 +174,59 @@ if cliente_editar:
 
         if st.button("💾 Actualizar datos del cliente"):
             try:
-                # Obtener índice en la hoja
-                index = cliente_row.index[0] + 2  # +2 porque get_all_records omite encabezado y es base-0
-
+                index = cliente_row.index[0] + 2
                 sheet_clientes.update(f"B{index}", nuevo_sector)
                 sheet_clientes.update(f"C{index}", nuevo_nombre)
                 sheet_clientes.update(f"D{index}", nueva_direccion)
                 sheet_clientes.update(f"E{index}", nuevo_telefono)
-
                 st.success("✅ Cliente actualizado correctamente.")
             except Exception as e:
                 st.error(f"❌ Error al actualizar: {e}")
     else:
         st.warning("⚠️ Cliente no encontrado.")
 
-# --- PLANTILLA IMPRIMIBLE PARA TÉCNICO ---
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-import io
-
+# --- PLANTILLA COMPACTA PARA IMPRESIÓN DE 3 RECLAMOS ---
 st.markdown("---")
-st.subheader("🖨️ Generar PDF del último reclamo")
+st.subheader("🖨️ Imprimir los últimos 3 reclamos (formato técnico compacto)")
 
-# Botón para generar PDF solo si hay datos
-if st.button("📄 Generar PDF del último reclamo"):
+if st.button("📄 Generar PDF compacto"):
     try:
-        # Obtener el último reclamo
         data = sheet_reclamos.get_all_records()
-        if data:
-            ultimo = data[-1]  # El último ingresado
+        if len(data) == 0:
+            st.warning("⚠️ No hay reclamos cargados aún.")
+        else:
+            ultimos = data[-3:] if len(data) >= 3 else data
 
             buffer = io.BytesIO()
             c = canvas.Canvas(buffer, pagesize=A4)
             width, height = A4
-            y = height - 50
+            y = height - 40
 
-            # Encabezado
-            c.setFont("Helvetica-Bold", 14)
-            c.drawString(50, y, "Parte de Reclamo Técnico")
-            y -= 30
+            for i, reclamo in enumerate(ultimos):
+                c.setFont("Helvetica-Bold", 11)
+                c.drawString(40, y, f"Reclamo #{len(data) - len(ultimos) + i + 1}")
+                y -= 15
 
-            c.setFont("Helvetica", 12)
-            campos = [
-                ("Fecha y hora", ultimo["Fecha y hora"]),
-                ("N° Cliente", ultimo["Nº Cliente"]),
-                ("Nombre", ultimo["Nombre"]),
-                ("Dirección", ultimo["Dirección"]),
-                ("Teléfono", ultimo["Teléfono"]),
-                ("Sector", ultimo["Sector"]),
-                ("Tipo de Reclamo", ultimo["Tipo de reclamo"]),
-                ("Detalles", ultimo["Detalles"]),
-                ("Estado", ultimo["Estado"]),
-                ("Técnico", ultimo["Técnico"]),
-                ("Atendido por", ultimo.get("Atendido por", ""))
-            ]
+                c.setFont("Helvetica", 9)
+                lineas = [
+                    f"Fecha: {reclamo['Fecha y hora']} - Cliente: {reclamo['Nombre']} ({reclamo['Nº Cliente']})",
+                    f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
+                    f"Sector: {reclamo['Sector']} - Técnico: {reclamo['Técnico']}",
+                    f"Tipo: {reclamo['Tipo de reclamo']}",
+                    f"Detalles: {reclamo['Detalles'][:80]}..." if len(reclamo['Detalles']) > 80 else f"Detalles: {reclamo['Detalles']}",
+                ]
 
-            for label, valor in campos:
-                c.drawString(50, y, f"{label}: {valor}")
-                y -= 20
+                for linea in lineas:
+                    c.drawString(40, y, linea)
+                    y -= 12
 
-            y -= 10
-            c.drawString(50, y, "Observaciones del técnico:")
-            y -= 60
-            c.line(50, y, width - 50, y)
-            y -= 30
-            c.drawString(50, y, "Firma del cliente:")
-            c.line(200, y, width - 50, y)
+                y -= 8
+                c.drawString(40, y, "Firma técnico: _____________________________")
+                y -= 25
+
+                if i < len(ultimos) - 1:
+                    c.line(30, y, width - 30, y)
+                    y -= 20
 
             c.save()
             buffer.seek(0)
@@ -268,10 +234,9 @@ if st.button("📄 Generar PDF del último reclamo"):
             st.download_button(
                 label="📥 Descargar PDF",
                 data=buffer,
-                file_name="reclamo_tecnico.pdf",
+                file_name="reclamos_compacto.pdf",
                 mime="application/pdf"
             )
-        else:
-            st.warning("⚠️ No hay reclamos cargados aún.")
+
     except Exception as e:
         st.error(f"❌ Error al generar PDF: {e}")
