@@ -208,3 +208,70 @@ if cliente_editar:
                 st.error(f"❌ Error al actualizar: {e}")
     else:
         st.warning("⚠️ Cliente no encontrado.")
+
+# --- PLANTILLA IMPRIMIBLE PARA TÉCNICO ---
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+import io
+
+st.markdown("---")
+st.subheader("🖨️ Generar PDF del último reclamo")
+
+# Botón para generar PDF solo si hay datos
+if st.button("📄 Generar PDF del último reclamo"):
+    try:
+        # Obtener el último reclamo
+        data = sheet_reclamos.get_all_records()
+        if data:
+            ultimo = data[-1]  # El último ingresado
+
+            buffer = io.BytesIO()
+            c = canvas.Canvas(buffer, pagesize=A4)
+            width, height = A4
+            y = height - 50
+
+            # Encabezado
+            c.setFont("Helvetica-Bold", 14)
+            c.drawString(50, y, "Parte de Reclamo Técnico")
+            y -= 30
+
+            c.setFont("Helvetica", 12)
+            campos = [
+                ("Fecha y hora", ultimo["Fecha y hora"]),
+                ("N° Cliente", ultimo["Nº Cliente"]),
+                ("Nombre", ultimo["Nombre"]),
+                ("Dirección", ultimo["Dirección"]),
+                ("Teléfono", ultimo["Teléfono"]),
+                ("Sector", ultimo["Sector"]),
+                ("Tipo de Reclamo", ultimo["Tipo de reclamo"]),
+                ("Detalles", ultimo["Detalles"]),
+                ("Estado", ultimo["Estado"]),
+                ("Técnico", ultimo["Técnico"]),
+                ("Atendido por", ultimo.get("Atendido por", ""))
+            ]
+
+            for label, valor in campos:
+                c.drawString(50, y, f"{label}: {valor}")
+                y -= 20
+
+            y -= 10
+            c.drawString(50, y, "Observaciones del técnico:")
+            y -= 60
+            c.line(50, y, width - 50, y)
+            y -= 30
+            c.drawString(50, y, "Firma del cliente:")
+            c.line(200, y, width - 50, y)
+
+            c.save()
+            buffer.seek(0)
+
+            st.download_button(
+                label="📥 Descargar PDF",
+                data=buffer,
+                file_name="reclamo_tecnico.pdf",
+                mime="application/pdf"
+            )
+        else:
+            st.warning("⚠️ No hay reclamos cargados aún.")
+    except Exception as e:
+        st.error(f"❌ Error al generar PDF: {e}")
