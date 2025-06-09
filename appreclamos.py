@@ -7,7 +7,8 @@ import pandas as pd
 
 # --- CONFIGURACIÓN ---
 SHEET_ID = "13R_3Mdr25Jd-nGhK7CxdcbKkFWLc0LPdYrOLOY8sZJo"
-WORKSHEET_NAME = "Principal"
+WORKSHEET_NAME_RECLAMOS = "Principal"
+WORKSHEET_NAME_CLIENTES = "Clientes"
 
 # --- AUTENTICACIÓN USANDO SECRETS ---
 info = dict(st.secrets["gcp_service_account"])
@@ -20,18 +21,34 @@ credentials = service_account.Credentials.from_service_account_info(
 )
 
 client = gspread.authorize(credentials)
-sheet = client.open_by_key(SHEET_ID).worksheet(WORKSHEET_NAME)
+sheet_reclamos = client.open_by_key(SHEET_ID).worksheet(WORKSHEET_NAME_RECLAMOS)
+sheet_clientes = client.open_by_key(SHEET_ID).worksheet(WORKSHEET_NAME_CLIENTES)
 
 # --- TÍTULO ---
 st.title("📋 Fusion Reclamos App")
 
+# --- CARGAR BASE DE CLIENTES ---
+clientes_data = sheet_clientes.get_all_records()
+df_clientes = pd.DataFrame(clientes_data)
+
 # --- FORMULARIO ---
 with st.form("reclamo_formulario"):
     nro_cliente = st.text_input("🔢 N° de Cliente")
-    sector = st.text_input("🏙️ Sector / Zona")
-    nombre = st.text_input("👤 Nombre del Cliente")
-    direccion = st.text_input("📍 Dirección")
-    telefono = st.text_input("📞 Teléfono")
+
+    # Si el número existe, rellenamos automáticamente
+    cliente_existente = df_clientes[df_clientes["Nº Cliente"] == nro_cliente].squeeze() if nro_cliente in df_clientes["Nº Cliente"].values else None
+
+    if cliente_existente is not None:
+        st.success("Cliente reconocido, datos cargados automáticamente.")
+        sector = st.text_input("🏙️ Sector / Zona", value=cliente_existente["Sector"])
+        nombre = st.text_input("👤 Nombre del Cliente", value=cliente_existente["Nombre"])
+        direccion = st.text_input("📍 Dirección", value=cliente_existente["Dirección"])
+        telefono = st.text_input("📞 Teléfono", value=cliente_existente["Teléfono"])
+    else:
+        sector = st.text_input("🏙️ Sector / Zona")
+        nombre = st.text_input("👤 Nombre del Cliente")
+        direccion = st.text_input("📍 Dirección")
+        telefono = st.text_input("📞 Teléfono")
 
     tipo_reclamo = st.selectbox(
         "📌 Tipo de Reclamo",
@@ -45,35 +62,45 @@ with st.form("reclamo_formulario"):
 
     enviado = st.form_submit_button("✅ Guardar Reclamo")
 
-# --- GUARDADO ---
+# --- GUARDADO DE RECLAMO Y CLIENTE ---
 if enviado:
-    argentina = pytz.timezone("America/Argentina/Buenos_Aires")
-    fecha_hora = datetime.now(argentina).strftime("%Y-%m-%d %H:%M:%S")
-    fila = [
-        fecha_hora,
-        nro_cliente,
-        sector,
-        nombre,
-        direccion,
-        telefono,
-        tipo_reclamo,
-        detalles,
-        estado,
-        tecnico,
-        nota
-    ]
-    try:
-        sheet.append_row(fila)
-        st.success("✅ Reclamo guardado correctamente.")
-    except Exception as e:
-        st.error(f"❌ Error al guardar el reclamo: {e}")
+    if not nro_cliente:
+        st.error("⚠️ Debes ingresar un número de cliente.")
+    else:
+        argentina = pytz.timezone("America/Argentina/Buenos_Aires")
+        fecha_hora = datetime.now(argentina).strftime("%Y-%m-%d %H:%M:%S")
+        fila_reclamo = [
+            fecha_hora,
+            nro_cliente,
+            sector,
+            nombre,
+            direccion,
+            telefono,
+            tipo_reclamo,
+            detalles,
+            estado,
+            tecnico,
+            nota
+        ]
+        try:
+            sheet_reclamos.append_row(fila_reclamo)
+            st.success("✅ Reclamo guardado correctamente.")
+
+            # Si el cliente no existe, guardarlo
+            if cliente_existente is None:
+                fila_cliente = [nro_cliente, sector, nombre, direccion, telefono]
+                sheet_clientes.append_row(fila_cliente)
+                st.info("🗂️ Nuevo cliente agregado a la base de datos.")
+
+        except Exception as e:
+            st.error(f"❌ Error al guardar: {e}")
 
 # --- TABLA Y EDICIÓN ---
 st.markdown("---")
 st.subheader("📊 Reclamos cargados")
 
 try:
-    data = sheet.get_all_records()
+    data = sheet_reclamos.get_all_records()
     df = pd.DataFrame(data)
 
     # Convertir fecha
@@ -113,10 +140,10 @@ try:
     # Guardar cambios
     if st.button("💾 Guardar cambios en Google Sheets"):
         try:
-            edited_df = edited_df.astype(str)  # Convertir todo a texto
-            sheet.clear()
-            sheet.append_row(edited_df.columns.tolist())
-            sheet.append_rows(edited_df.values.tolist())
+            edited_df = edited_df.astype(str)
+            sheet_reclamos.clear()
+            sheet_reclamos.append_row(edited_df.columns.tolist())
+            sheet_reclamos.append_rows(edited_df.values.tolist())
             st.success("✅ Cambios guardados correctamente.")
         except Exception as e:
             st.error(f"❌ Error al guardar los cambios: {e}")
