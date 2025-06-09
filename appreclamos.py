@@ -221,10 +221,10 @@ try:
 
             for i, idx in enumerate(selected):
                 reclamo = df_pdf.loc[idx]
-                c.setFont("Helvetica-Bold", 20)
+                c.setFont("Helvetica-Bold", 17)
                 c.drawString(40, y, f"Reclamo #{idx + 1}")
                 y -= 15
-                c.setFont("Helvetica", 15)
+                c.setFont("Helvetica", 12)
                 lineas = [
                     f"Fecha: {reclamo['Fecha y hora']} - Cliente: {reclamo['Nombre']} ({reclamo['Nº Cliente']})",
                     f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
