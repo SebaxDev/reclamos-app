@@ -3,6 +3,7 @@ from google.oauth2 import service_account
 import gspread
 from datetime import datetime
 import pytz
+import pandas as pd
 
 # --- CONFIGURACIÓN ---
 SHEET_ID = "13R_3Mdr25Jd-nGhK7CxdcbKkFWLc0LPdYrOLOY8sZJo"
