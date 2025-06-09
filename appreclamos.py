@@ -195,7 +195,7 @@ try:
 
     if not df_pdf.empty:
         df_pdf["Seleccionar"] = False
-        selected = st.multiselect("Seleccioná los reclamos a imprimir:", df_pdf.index, format_func=lambda x: f"{df_pdf.at[x, 'Fecha y hora']} - {df_pdf.at[x, 'Nombre']}")
+        selected = st.multiselect("Seleccioná los reclamos a imprimir:", df_pdf.index, format_func=lambda x: f"{df_pdf.at[x, 'Nº Cliente']} - {df_pdf.at[x, 'Nombre']}")
 
         if st.button("📄 Generar PDF con seleccionados") and selected:
             buffer = io.BytesIO()
