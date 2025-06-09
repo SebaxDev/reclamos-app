@@ -31,17 +31,18 @@ df_clientes = pd.DataFrame(clientes_data)
 # --- TÍTULO ---
 st.title("📋 Fusion Reclamos App")
 
-# --- INGRESAR N° DE CLIENTE ANTES DEL FORM ---
-nro_cliente = st.text_input("🔢 N° de Cliente")
+# --- INGRESAR N° DE CLIENTE ---
+nro_cliente = st.text_input("🔢 N° de Cliente").strip()
 
 cliente_existente = None
 if "Nº Cliente" in df_clientes.columns and nro_cliente:
-    filtro = df_clientes[df_clientes["Nº Cliente"] == nro_cliente]
-    if not filtro.empty:
-        cliente_existente = filtro.squeeze()
-        st.success("Cliente reconocido, formulario auto-completado.")
+    df_clientes["Nº Cliente"] = df_clientes["Nº Cliente"].astype(str).str.strip()
+    match = df_clientes[df_clientes["Nº Cliente"] == nro_cliente]
+    if not match.empty:
+        cliente_existente = match.squeeze()
+        st.success("✅ Cliente reconocido, datos auto-cargados.")
 
-# --- FORMULARIO PRINCIPAL ---
+# --- FORMULARIO ---
 with st.form("reclamo_formulario"):
     if cliente_existente is not None:
         sector = st.text_input("🏙️ Sector / Zona", value=cliente_existente["Sector"])
@@ -63,16 +64,16 @@ with st.form("reclamo_formulario"):
     estado = st.selectbox("⚙️ Estado del Reclamo", ["Pendiente", "En curso", "Resuelto"], index=0)
     tecnico = st.text_input("👷 Técnico asignado (opcional)")
     nota = st.text_area("🗒️ Nota o seguimiento (opcional)")
-
     enviado = st.form_submit_button("✅ Guardar Reclamo")
 
-# --- GUARDADO DE RECLAMO Y CLIENTE ---
+# --- GUARDADO ---
 if enviado:
     if not nro_cliente:
         st.error("⚠️ Debes ingresar un número de cliente.")
     else:
         argentina = pytz.timezone("America/Argentina/Buenos_Aires")
         fecha_hora = datetime.now(argentina).strftime("%Y-%m-%d %H:%M:%S")
+
         fila_reclamo = [
             fecha_hora,
             nro_cliente,
@@ -86,16 +87,17 @@ if enviado:
             tecnico,
             nota
         ]
+
         try:
             sheet_reclamos.append_row(fila_reclamo)
             st.success("✅ Reclamo guardado correctamente.")
 
-            # Guardar cliente si no existe
-            if cliente_existente is None:
+            # Verificar si el cliente ya está cargado
+            df_clientes["Nº Cliente"] = df_clientes["Nº Cliente"].astype(str).str.strip()
+            if nro_cliente not in df_clientes["Nº Cliente"].values:
                 fila_cliente = [nro_cliente, sector, nombre, direccion, telefono]
                 sheet_clientes.append_row(fila_cliente)
                 st.info("🗂️ Nuevo cliente agregado a la base de datos.")
-
         except Exception as e:
             st.error(f"❌ Error al guardar: {e}")
 
