@@ -39,19 +39,17 @@ with st.form("reclamo_formulario"):
     )
 
     detalles = st.text_area("📝 Detalles del Reclamo")
+    estado = st.selectbox("⚙️ Estado del Reclamo", ["Pendiente", "En curso", "Resuelto"], index=0)
 
-    estado = st.selectbox(
-        "⚙️ Estado del Reclamo",
-        ["Pendiente", "En curso", "Resuelto"],
-        index=0
-    )
+    tecnico = st.text_input("👷 Técnico asignado (opcional)")
+    nota = st.text_area("🗒️ Nota o seguimiento (opcional)")
 
     enviado = st.form_submit_button("✅ Guardar Reclamo")
 
 # --- GUARDADO ---
 if enviado:
     argentina = pytz.timezone("America/Argentina/Buenos_Aires")
-    fecha_hora = datetime.now(argentina).strftime("%d-%m-%Y %H:%M")
+    fecha_hora = datetime.now(argentina).strftime("%Y-%m-%d %H:%M:%S")
     fila = [
         fecha_hora,
         nro_cliente,
@@ -61,36 +59,67 @@ if enviado:
         telefono,
         tipo_reclamo,
         detalles,
-        estado
+        estado,
+        tecnico,
+        nota
     ]
     try:
         sheet.append_row(fila)
         st.success("✅ Reclamo guardado correctamente.")
     except Exception as e:
         st.error(f"❌ Error al guardar el reclamo: {e}")
+
+# --- TABLA Y EDICIÓN ---
 st.markdown("---")
 st.subheader("📊 Reclamos cargados")
 
-# --- Leer datos de la hoja ---
 try:
-    datos = sheet.get_all_records()
-    df = pd.DataFrame(datos)
+    data = sheet.get_all_records()
+    df = pd.DataFrame(data)
 
-    # --- Filtros ---
-    col1, col2 = st.columns(2)
+    # Convertir fecha
+    df["Fecha y hora"] = pd.to_datetime(df["Fecha y hora"], format="%Y-%m-%d %H:%M:%S", errors="coerce")
+    df = df.sort_values("Fecha y hora", ascending=False)
+
+    # Filtros
+    col1, col2, col3 = st.columns(3)
     with col1:
         filtro_estado = st.selectbox("🔎 Filtrar por estado", ["Todos"] + sorted(df["Estado"].unique()))
     with col2:
         filtro_sector = st.selectbox("🏙️ Filtrar por sector", ["Todos"] + sorted(df["Sector"].unique()))
+    with col3:
+        filtro_tipo = st.selectbox("📌 Filtrar por tipo", ["Todos"] + sorted(df["Tipo de reclamo"].unique()))
 
-    # --- Aplicar filtros ---
+    # Aplicar filtros
     if filtro_estado != "Todos":
         df = df[df["Estado"] == filtro_estado]
     if filtro_sector != "Todos":
         df = df[df["Sector"] == filtro_sector]
+    if filtro_tipo != "Todos":
+        df = df[df["Tipo de reclamo"] == filtro_tipo]
 
-    # --- Mostrar tabla ---
-    st.dataframe(df, use_container_width=True)
+    # Tabla editable
+    edited_df = st.data_editor(
+        df,
+        use_container_width=True,
+        num_rows="dynamic",
+        key="editor",
+        column_config={
+            "Estado": st.column_config.SelectboxColumn("Estado", options=["Pendiente", "En curso", "Resuelto"]),
+            "Técnico": st.column_config.TextColumn("Técnico asignado"),
+            "Nota": st.column_config.TextColumn("Nota de seguimiento")
+        }
+    )
+
+    # Guardar cambios
+    if st.button("💾 Guardar cambios en Google Sheets"):
+        try:
+            sheet.clear()
+            sheet.append_row(df.columns.tolist())
+            sheet.append_rows(edited_df.values.tolist())
+            st.success("✅ Cambios guardados correctamente.")
+        except Exception as e:
+            st.error(f"❌ Error al guardar los cambios: {e}")
 
 except Exception as e:
-    st.warning(f"No se pudieron cargar los datos: {e}")
+    st.warning(f"⚠️ No se pudieron cargar los datos: {e}")
