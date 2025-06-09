@@ -67,3 +67,29 @@ if enviado:
         st.success("✅ Reclamo guardado correctamente.")
     except Exception as e:
         st.error(f"❌ Error al guardar el reclamo: {e}")
+st.markdown("---")
+st.subheader("📊 Reclamos cargados")
+
+# --- Leer datos de la hoja ---
+try:
+    datos = sheet.get_all_records()
+    df = pd.DataFrame(datos)
+
+    # --- Filtros ---
+    col1, col2 = st.columns(2)
+    with col1:
+        filtro_estado = st.selectbox("🔎 Filtrar por estado", ["Todos"] + sorted(df["Estado"].unique()))
+    with col2:
+        filtro_sector = st.selectbox("🏙️ Filtrar por sector", ["Todos"] + sorted(df["Sector"].unique()))
+
+    # --- Aplicar filtros ---
+    if filtro_estado != "Todos":
+        df = df[df["Estado"] == filtro_estado]
+    if filtro_sector != "Todos":
+        df = df[df["Sector"] == filtro_sector]
+
+    # --- Mostrar tabla ---
+    st.dataframe(df, use_container_width=True)
+
+except Exception as e:
+    st.warning(f"No se pudieron cargar los datos: {e}")
