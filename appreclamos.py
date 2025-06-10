@@ -8,6 +8,26 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 import io
 
+# --- LOGIN CON SECRETS ---
+if "logueado" not in st.session_state:
+    st.session_state.logueado = False
+
+if not st.session_state.logueado:
+    with st.form("login_formulario"):
+        st.title("🔐 Iniciar sesión")
+        usuario = st.text_input("Usuario")
+        password = st.text_input("Contraseña", type="password")
+        enviar = st.form_submit_button("Ingresar")
+
+        if enviar:
+            if usuario in st.secrets["auth"] and st.secrets["auth"][usuario] == password:
+                st.session_state.logueado = True
+                st.success("✅ Acceso concedido")
+                st.experimental_rerun()
+            else:
+                st.error("❌ Usuario o contraseña incorrectos")
+    st.stop()
+
 # --- ESTILO VISUAL GLOBAL ---
 st.markdown("""
     <style>
