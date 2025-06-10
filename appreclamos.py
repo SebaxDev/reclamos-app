@@ -86,7 +86,7 @@ except:
 st.divider()
 
 # --- MENÚ DE NAVEGACIÓN ---
-opcion = st.radio("📂 Ir a la sección:", ["Inicio", "Historial por cliente", "Editar cliente", "Imprimir reclamos"], horizontal=True)
+opcion = st.radio("📂 Ir a la sección:", ["Inicio", "Reclamos cargados", "Historial por cliente", "Editar cliente", "Imprimir reclamos"], horizontal=True)
 
 # --- SECCIÓN 1: INICIO ---
 if opcion == "Inicio":
@@ -157,10 +157,67 @@ if opcion == "Inicio":
                 except Exception as e:
                     st.error(f"❌ Error al guardar: {e}")
 
-    st.divider()
+# --- SECCIÓN 2: RECLAMOS CARGADOS ---
+if opcion == "Reclamos cargados":
     st.subheader("📊 Reclamos cargados")
+    try:
+        df = df_reclamos.copy()
+        df_clientes["Nº Cliente"] = df_clientes["Nº Cliente"].astype(str)
+        df = pd.merge(df, df_clientes[["Nº Cliente", "N° de Precinto"]], on="Nº Cliente", how="left")
+        df["Fecha y hora"] = pd.to_datetime(df["Fecha y hora"], errors="coerce")
+        df = df.sort_values("Fecha y hora", ascending=False)
 
-# --- SECCIÓN 2: HISTORIAL POR CLIENTE ---
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            filtro_estado = st.selectbox("🔎 Filtrar por estado", ["Todos"] + sorted(df["Estado"].unique()))
+        with col2:
+            filtro_sector = st.selectbox("🏙️ Filtrar por sector", ["Todos"] + sorted(df["Sector"].unique()))
+        with col3:
+            filtro_tipo = st.selectbox("📌 Filtrar por tipo", ["Todos"] + sorted(df["Tipo de reclamo"].unique()))
+
+        if filtro_estado != "Todos":
+            df = df[df["Estado"] == filtro_estado]
+        if filtro_sector != "Todos":
+            df = df[df["Sector"] == filtro_sector]
+        if filtro_tipo != "Todos":
+            df = df[df["Tipo de reclamo"] == filtro_tipo]
+
+        edited_df = st.data_editor(
+            df,
+            use_container_width=True,
+            num_rows="dynamic",
+            key="editor",
+            column_config={
+                "Estado": st.column_config.SelectboxColumn("Estado", options=["Pendiente", "En curso", "Resuelto"]),
+                "Técnico": st.column_config.TextColumn("Técnico asignado"),
+                "N° de Precinto": st.column_config.TextColumn("N° de Precinto")
+            }
+        )
+
+        if st.button("💾 Guardar cambios en Google Sheets"):
+            try:
+                edited_df = edited_df.astype(str)
+
+                # Actualizar hoja de reclamos
+                sheet_reclamos.clear()
+                sheet_reclamos.append_row(edited_df.columns.tolist())
+                sheet_reclamos.append_rows(edited_df.values.tolist())
+
+                # Actualizar precintos en hoja de clientes
+                precinto_dict = edited_df.set_index("Nº Cliente")["N° de Precinto"].to_dict()
+                for i, row in df_clientes.iterrows():
+                    cliente_id = row["Nº Cliente"]
+                    if cliente_id in precinto_dict:
+                        new_precinto = precinto_dict[cliente_id]
+                        sheet_clientes.update(f"F{i + 2}", new_precinto)
+
+                st.success("✅ Cambios guardados correctamente en ambas hojas.")
+            except Exception as e:
+                st.error(f"❌ Error al guardar los cambios: {e}")
+    except Exception as e:
+        st.warning(f"⚠️ No se pudieron cargar los datos: {e}")
+
+# --- SECCIÓN 3: HISTORIAL POR CLIENTE ---
 if opcion == "Historial por cliente":
     st.subheader("📜 Historial de reclamos por cliente")
     historial_cliente = st.text_input("🔍 Ingresá N° de Cliente para ver su historial").strip()
@@ -183,7 +240,7 @@ if opcion == "Historial por cliente":
         else:
             st.info("❕ Este cliente no tiene reclamos registrados.")
 
-# --- SECCIÓN 3: EDITAR CLIENTE ---
+# --- SECCIÓN 4: EDITAR CLIENTE ---
 if opcion == "Editar cliente":
     st.subheader("🛠️ Editar datos de un cliente")
     cliente_editar = st.text_input("🔎 Ingresá N° de Cliente a editar").strip()
@@ -214,7 +271,7 @@ if opcion == "Editar cliente":
         else:
             st.warning("⚠️ Cliente no encontrado.")
 
-# --- SECCIÓN 4: IMPRESIÓN ---
+# --- SECCIÓN 5: IMPRESIÓN ---
 if opcion == "Imprimir reclamos":
     st.subheader("🖨️ Seleccionar reclamos para imprimir (formato técnico compacto)")
 
