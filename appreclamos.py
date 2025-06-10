@@ -64,6 +64,11 @@ df_clientes = pd.DataFrame(clientes_data)
 reclamos_data = sheet_reclamos.get_all_records()
 df_reclamos = pd.DataFrame(reclamos_data)
 
+# --- NORMALIZAR CAMPOS CLAVE ---
+df_clientes["Nº Cliente"] = df_clientes["Nº Cliente"].apply(lambda x: str(int(x)).strip() if isinstance(x, (int, float)) else str(x).strip())
+df_reclamos["Nº Cliente"] = df_reclamos["Nº Cliente"].apply(lambda x: str(int(x)).strip() if isinstance(x, (int, float)) else str(x).strip())
+df_clientes["N° de Precinto"] = df_clientes["N° de Precinto"].apply(lambda x: str(int(x)).strip() if isinstance(x, (int, float)) else str(x).strip())
+
 # --- TÍTULO Y DASHBOARD ---
 st.title("📋 Fusion Reclamos App")
 
