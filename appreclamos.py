@@ -69,7 +69,7 @@ st.title("📋 Fusion Reclamos App")
 
 # --- METRICAS RESUMEN ---
 try:
-                    df_metricas = df_reclamos.copy()
+    df_metricas = df_reclamos.copy()
     total = len(df_metricas)
     pendientes = len(df_metricas[df_metricas["Estado"] == "Pendiente"])
     resueltos = len(df_metricas[df_metricas["Estado"] == "Resuelto"])
@@ -89,16 +89,6 @@ st.divider()
 opcion = st.radio("📂 Ir a la sección:", ["Inicio", "Historial por cliente", "Editar cliente", "Imprimir reclamos"], horizontal=True)
 
 # --- SECCIÓN 1: INICIO (CARGA + LISTA DE RECLAMOS) ---
-# --- FUNCIONES VISUALES DE ESTADO ---
-def estado_icono(estado):
-    if estado == "Pendiente":
-        return "🔴 Pendiente"
-    elif estado == "En curso":
-        return "🟠 En curso"
-    elif estado == "Resuelto":
-        return "✅ Resuelto"
-    else:
-        return estado
 if opcion == "Inicio":
     st.subheader("📝 Cargar nuevo reclamo")
     nro_cliente = st.text_input("🔢 N° de Cliente").strip()
@@ -160,33 +150,36 @@ if opcion == "Inicio":
                 try:
                     sheet_reclamos.append_row(fila_reclamo)
                     st.success("✅ Reclamo guardado correctamente.")
-                st.balloons()
-            st.balloons()
                     if nro_cliente not in df_clientes["Nº Cliente"].values:
                         fila_cliente = [nro_cliente, sector, nombre, direccion, telefono]
                         sheet_clientes.append_row(fila_cliente)
                         st.info("🗂️ Nuevo cliente agregado a la base de datos.")
                 except Exception as e:
-                st.error(f"❌ Error al guardar: {e}")
+                    st.error(f"❌ Error al guardar: {e}")
 
     st.divider()
     st.subheader("📊 Reclamos cargados")
     try:
         df = df_reclamos.copy()
-df["Fecha y hora"] = pd.to_datetime(df["Fecha y hora"], errors="coerce")
-df = df.sort_values("Fecha y hora", ascending=False)
-df["Estado"] = df["Estado"].apply(estado_icono)
+        df["Fecha y hora"] = pd.to_datetime(df["Fecha y hora"], errors="coerce")
+        df = df.sort_values("Fecha y hora", ascending=False)
 
-agrupado = df.groupby(df["Fecha y hora"].dt.date)
-for fecha, datos in agrupado:
-    with st.expander(f"📅 {fecha.strftime('%d/%m/%Y')}"):
-        st.dataframe(datos, use_container_width=True)
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            filtro_estado = st.selectbox("🔎 Filtrar por estado", ["Todos"] + sorted(df["Estado"].unique()))
+        with col2:
+            filtro_sector = st.selectbox("🏙️ Filtrar por sector", ["Todos"] + sorted(df["Sector"].unique()))
+        with col3:
+            filtro_tipo = st.selectbox("📌 Filtrar por tipo", ["Todos"] + sorted(df["Tipo de reclamo"].unique()))
 
-# Edición directa activada sobre todo el dataframe
-# Mostrar advertencia
-st.info("🖊️ Hacé scroll hasta el final para editar reclamos directamente.")
+        if filtro_estado != "Todos":
+            df = df[df["Estado"] == filtro_estado]
+        if filtro_sector != "Todos":
+            df = df[df["Sector"] == filtro_sector]
+        if filtro_tipo != "Todos":
+            df = df[df["Tipo de reclamo"] == filtro_tipo]
 
-edited_df = st.data_editor(
+        edited_df = st.data_editor(
             df,
             use_container_width=True,
             num_rows="dynamic",
@@ -262,30 +255,6 @@ if opcion == "Editar cliente":
         else:
             st.warning("⚠️ Cliente no encontrado.")
 
-        st.divider()
-        st.subheader("🧹 Eliminar reclamos de este cliente")
-        df_reclamos["Nº Cliente"] = df_reclamos["Nº Cliente"].astype(str).str.strip()
-        reclamos_cliente = df_reclamos[df_reclamos["Nº Cliente"] == cliente_editar]
-
-        if not reclamos_cliente.empty:
-            reclamos_cliente = reclamos_cliente.reset_index(drop=True)
-            opciones = [f"{i+1}. {row['Fecha y hora']} - {row['Tipo de reclamo']} - {row['Estado']}" for i, row in reclamos_cliente.iterrows()]
-            seleccion = st.selectbox("Seleccioná un reclamo para eliminar:", opciones)
-            index_local = opciones.index(seleccion)
-
-            with st.expander("⚠️ Confirmar eliminación"):
-                st.warning("Esta acción no se puede deshacer. El reclamo será eliminado permanentemente del registro.")
-                if st.button("❌ Eliminar reclamo seleccionado"):
-                    try:
-                        fila_en_hoja = df_reclamos[df_reclamos["Nº Cliente"] == cliente_editar].index[index_local] + 2
-                        sheet_reclamos.delete_rows(fila_en_hoja + 1)  # +1 por encabezado
-                        st.success("🗑️ Reclamo eliminado exitosamente.")
-                        st.experimental_rerun()
-                    except Exception as e:
-                        st.error(f"❌ Error al eliminar: {e}")
-        else:
-            st.info("Este cliente no tiene reclamos registrados.")
-
 # --- SECCIÓN 4: IMPRESIÓN ---
 if opcion == "Imprimir reclamos":
     st.subheader("🖨️ Seleccionar reclamos para imprimir (formato técnico compacto)")
@@ -302,13 +271,6 @@ if opcion == "Imprimir reclamos":
 
         solo_pendientes = st.checkbox("🧾 Mostrar solo reclamos pendientes para imprimir")
 
-        # Filtro por tipo de reclamo
-        tipos_disponibles = sorted(df_pdf["Tipo de reclamo"].unique())
-        tipos_filtrados = st.multiselect("📌 Filtrar por tipo de reclamo:", tipos_disponibles)
-
-        if tipos_filtrados:
-            df_pdf = df_pdf[df_pdf["Tipo de reclamo"].isin(tipos_filtrados)]
-
         if solo_pendientes:
             df_pdf = df_pdf[df_pdf["Estado"] == "Pendiente"]
 
@@ -323,10 +285,10 @@ if opcion == "Imprimir reclamos":
 
             for i, idx in enumerate(selected):
                 reclamo = df_pdf.loc[idx]
-                c.setFont("Helvetica-Bold", 11)
+                c.setFont("Helvetica-Bold", 16)
                 c.drawString(40, y, f"Reclamo #{reclamo['Nº Cliente']}")
                 y -= 15
-                c.setFont("Helvetica", 9)
+                c.setFont("Helvetica", 12)
                 lineas = [
                     f"Fecha: {reclamo['Fecha y hora']} - Cliente: {reclamo['Nombre']} ({reclamo['Nº Cliente']})",
                     f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
@@ -346,8 +308,7 @@ if opcion == "Imprimir reclamos":
 
             c.save()
             buffer.seek(0)
-            st.toast("✅ PDF generado con éxito")
-st.download_button(
+            st.download_button(
                 label="📥 Descargar PDF",
                 data=buffer,
                 file_name="reclamos_seleccionados.pdf",
@@ -356,55 +317,6 @@ st.download_button(
 
         elif not selected:
             st.info("Seleccioná al menos un reclamo para generar el PDF.")
-
-        # --- PDF AUTOMÁTICO CON TIPOS SELECCIONADOS Y PENDIENTES ---
-        st.divider()
-        st.subheader("📄 Generar PDF automático por tipo de reclamo (solo pendientes)")
-        tipos_para_pdf = st.multiselect("Seleccioná tipos de reclamos a imprimir:", tipos_disponibles, key="pdf_auto")
-
-        if st.button("🖨️ Generar PDF por tipo de reclamo") and tipos_para_pdf:
-            df_filtrado = df_reclamos[
-                (df_reclamos["Estado"] == "Pendiente") &
-                (df_reclamos["Tipo de reclamo"].isin(tipos_para_pdf))
-            ]
-            if not df_filtrado.empty:
-                buffer = io.BytesIO()
-                c = canvas.Canvas(buffer, pagesize=A4)
-                width, height = A4
-                y = height - 40
-
-                for i, (_, reclamo) in enumerate(df_filtrado.iterrows()):
-                    c.setFont("Helvetica-Bold", 11)
-                    c.drawString(40, y, f"Reclamo #{reclamo['Nº Cliente']}")
-                    y -= 15
-                    c.setFont("Helvetica", 9)
-                    lineas = [
-                        f"Fecha: {reclamo['Fecha y hora']} - Cliente: {reclamo['Nombre']} ({reclamo['Nº Cliente']})",
-                        f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
-                        f"Sector: {reclamo['Sector']} - Técnico: {reclamo['Técnico']}",
-                        f"Tipo: {reclamo['Tipo de reclamo']}",
-                        f"Detalles: {reclamo['Detalles'][:80]}..." if len(reclamo['Detalles']) > 80 else f"Detalles: {reclamo['Detalles']}",
-                    ]
-                    for linea in lineas:
-                        c.drawString(40, y, linea)
-                        y -= 12
-                    y -= 8
-                    c.drawString(40, y, "Firma técnico: _____________________________")
-                    y -= 25
-                    if y < 150 and i < len(df_filtrado) - 1:
-                        c.showPage()
-                        y = height - 40
-
-                c.save()
-                buffer.seek(0)
-                st.download_button(
-                    label="📥 Descargar PDF automático",
-                    data=buffer,
-                    file_name="reclamos_pendientes_por_tipo.pdf",
-                    mime="application/pdf"
-                )
-            else:
-                st.warning("⚠️ No se encontraron reclamos pendientes de los tipos seleccionados.")
 
     except Exception as e:
         st.error(f"❌ Error al generar PDF: {e}")
