@@ -147,6 +147,10 @@ if opcion == "Inicio":
                     st.error(f"❌ Error al guardar los datos: {e}")
 
 # --- SECCIÓN 2: RECLAMOS CARGADOS ---
+
+except Exception as e:
+    st.error(f"❌ Error al guardar los datos: {e}")
+
 if opcion == "Reclamos cargados":
     st.subheader("📊 Reclamos cargados")
     try:
@@ -214,6 +218,10 @@ if opcion == "Reclamos cargados":
                 st.error(f"❌ Error al guardar los cambios: {e}")
 
 # --- SECCIÓN 3: HISTORIAL POR CLIENTE ---
+
+except Exception as e:
+    st.error(f"❌ Error al guardar los datos: {e}")
+
 if opcion == "Historial por cliente":
     st.subheader("📜 Historial de reclamos por cliente")
     historial_cliente = st.text_input("🔍 Ingresá N° de Cliente para ver su historial").strip()
@@ -268,6 +276,10 @@ if opcion == "Editar cliente":
             st.warning("⚠️ Cliente no encontrado.")
 
 # --- SECCIÓN 5: IMPRESIÓN ---
+
+except Exception as e:
+    st.error(f"❌ Error al guardar los datos: {e}")
+
 if opcion == "Imprimir reclamos":
     st.subheader("🖨️ Seleccionar reclamos para imprimir (formato técnico compacto)")
 
