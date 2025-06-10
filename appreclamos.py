@@ -249,6 +249,13 @@ if opcion == "Imprimir reclamos":
 
         solo_pendientes = st.checkbox("🧾 Mostrar solo reclamos pendientes para imprimir")
 
+        # Filtro por tipo de reclamo
+        tipos_disponibles = sorted(df_pdf["Tipo de reclamo"].unique())
+        tipos_filtrados = st.multiselect("📌 Filtrar por tipo de reclamo:", tipos_disponibles)
+
+        if tipos_filtrados:
+            df_pdf = df_pdf[df_pdf["Tipo de reclamo"].isin(tipos_filtrados)]
+
         if solo_pendientes:
             df_pdf = df_pdf[df_pdf["Estado"] == "Pendiente"]
 
@@ -295,6 +302,55 @@ if opcion == "Imprimir reclamos":
 
         elif not selected:
             st.info("Seleccioná al menos un reclamo para generar el PDF.")
+
+        # --- PDF AUTOMÁTICO CON TIPOS SELECCIONADOS Y PENDIENTES ---
+        st.divider()
+        st.subheader("📄 Generar PDF automático por tipo de reclamo (solo pendientes)")
+        tipos_para_pdf = st.multiselect("Seleccioná tipos de reclamos a imprimir:", tipos_disponibles, key="pdf_auto")
+
+        if st.button("🖨️ Generar PDF por tipo de reclamo") and tipos_para_pdf:
+            df_filtrado = df_reclamos[
+                (df_reclamos["Estado"] == "Pendiente") &
+                (df_reclamos["Tipo de reclamo"].isin(tipos_para_pdf))
+            ]
+            if not df_filtrado.empty:
+                buffer = io.BytesIO()
+                c = canvas.Canvas(buffer, pagesize=A4)
+                width, height = A4
+                y = height - 40
+
+                for i, (_, reclamo) in enumerate(df_filtrado.iterrows()):
+                    c.setFont("Helvetica-Bold", 16)
+                    c.drawString(40, y, f"Reclamo #{reclamo['Nº Cliente']}")
+                    y -= 15
+                    c.setFont("Helvetica", 12)
+                    lineas = [
+                        f"Fecha: {reclamo['Fecha y hora']} - Cliente: {reclamo['Nombre']} ({reclamo['Nº Cliente']})",
+                        f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
+                        f"Sector: {reclamo['Sector']} - Técnico: {reclamo['Técnico']}",
+                        f"Tipo: {reclamo['Tipo de reclamo']}",
+                        f"Detalles: {reclamo['Detalles'][:80]}..." if len(reclamo['Detalles']) > 80 else f"Detalles: {reclamo['Detalles']}",
+                    ]
+                    for linea in lineas:
+                        c.drawString(40, y, linea)
+                        y -= 12
+                    y -= 8
+                    c.drawString(40, y, "Firma técnico: _____________________________")
+                    y -= 25
+                    if y < 150 and i < len(df_filtrado) - 1:
+                        c.showPage()
+                        y = height - 40
+
+                c.save()
+                buffer.seek(0)
+                st.download_button(
+                    label="📥 Descargar PDF automático",
+                    data=buffer,
+                    file_name="reclamos_pendientes_por_tipo.pdf",
+                    mime="application/pdf"
+                )
+            else:
+                st.warning("⚠️ No se encontraron reclamos pendientes de los tipos seleccionados.")
 
     except Exception as e:
         st.error(f"❌ Error al generar PDF: {e}")
