@@ -21,14 +21,13 @@ if not st.session_state.logueado:
         password = st.text_input("Contraseña", type="password")
         enviar = st.form_submit_button("Ingresar")
 
-    if enviar:
-        if usuario in st.secrets["auth"] and st.secrets["auth"][usuario] == password:
-            st.session_state.logueado = True
-            st.session_state.usuario_actual = usuario
-            st.success("✅ Acceso concedido. Redirigiendo...")
-            st.experimental_rerun()
-        else:
-            st.error("❌ Usuario o contraseña incorrectos")
+        if enviar:
+            if usuario in st.secrets["auth"] and st.secrets["auth"][usuario] == password:
+                st.session_state.logueado = True
+                st.session_state.usuario_actual = usuario
+                st.success("✅ Acceso concedido.")
+            else:
+                st.error("❌ Usuario o contraseña incorrectos")
     st.stop()
 
 # --- ESTILO VISUAL GLOBAL ---
