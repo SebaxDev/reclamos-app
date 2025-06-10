@@ -187,6 +187,30 @@ try:
 except Exception as e:
     st.warning(f"⚠️ No se pudieron cargar los datos: {e}")
 
+# --- HISTORIAL POR CLIENTE ---
+st.divider()
+st.subheader("📜 Historial de reclamos por cliente")
+
+historial_cliente = st.text_input("🔍 Ingresá N° de Cliente para ver su historial").strip()
+
+if historial_cliente:
+    df_reclamos["Nº Cliente"] = df_reclamos["Nº Cliente"].astype(str).str.strip()
+    historial = df_reclamos[df_reclamos["Nº Cliente"] == historial_cliente]
+
+    if not historial.empty:
+        historial["Fecha y hora"] = pd.to_datetime(historial["Fecha y hora"], errors="coerce")
+        historial = historial.sort_values("Fecha y hora", ascending=False)
+
+        st.success(f"🔎 Se encontraron {len(historial)} reclamos para el cliente {historial_cliente}.")
+        st.dataframe(
+            historial[
+                ["Fecha y hora", "Tipo de reclamo", "Estado", "Técnico", "Nota", "Detalles"]
+            ],
+            use_container_width=True
+        )
+    else:
+        st.info("❕ Este cliente no tiene reclamos registrados.")
+
 # --- EDICIÓN DE CLIENTES ---
 st.divider()
 st.subheader("🛠️ Editar datos de un cliente")
