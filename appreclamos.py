@@ -88,7 +88,7 @@ st.divider()
 # --- MENÚ DE NAVEGACIÓN ---
 opcion = st.radio("📂 Ir a la sección:", ["Inicio", "Historial por cliente", "Editar cliente", "Imprimir reclamos"], horizontal=True)
 
-# --- SECCIÓN 1: INICIO (CARGA + LISTA DE RECLAMOS) ---
+# --- SECCIÓN 1: INICIO ---
 if opcion == "Inicio":
     st.subheader("📝 Cargar nuevo reclamo")
     nro_cliente = st.text_input("🔢 N° de Cliente").strip()
@@ -112,14 +112,14 @@ if opcion == "Inicio":
             col1, col2 = st.columns(2)
             if cliente_existente is not None:
                 with col1:
-                    sector = st.text_input("🏙️ Sector / Zona", value=cliente_existente["Sector"])
+                    sector = st.text_input("🏩 Sector / Zona", value=cliente_existente["Sector"])
                     direccion = st.text_input("📍 Dirección", value=cliente_existente["Dirección"])
                 with col2:
                     nombre = st.text_input("👤 Nombre del Cliente", value=cliente_existente["Nombre"])
                     telefono = st.text_input("📞 Teléfono", value=cliente_existente["Teléfono"])
             else:
                 with col1:
-                    sector = st.text_input("🏙️ Sector / Zona")
+                    sector = st.text_input("🏩 Sector / Zona")
                     direccion = st.text_input("📍 Dirección")
                 with col2:
                     nombre = st.text_input("👤 Nombre del Cliente")
@@ -135,7 +135,7 @@ if opcion == "Inicio":
             detalles = st.text_area("📝 Detalles del Reclamo")
             estado = st.selectbox("⚙️ Estado del Reclamo", ["Pendiente", "En curso", "Resuelto"], index=0)
             tecnico = st.text_input("👷 Técnico asignado (opcional)")
-            nota = st.text_area("🗒️ Nota o seguimiento (opcional)")
+            precinto = st.text_input("🔐 N° de Precinto (opcional)", value=cliente_existente.get("N° de Precinto", "") if cliente_existente is not None else "")
             atendido_por = st.text_input("👤 Atendido por")
             enviado = st.form_submit_button("✅ Guardar Reclamo")
 
@@ -146,12 +146,12 @@ if opcion == "Inicio":
                 argentina = pytz.timezone("America/Argentina/Buenos_Aires")
                 fecha_hora = datetime.now(argentina).strftime("%Y-%m-%d %H:%M:%S")
                 fila_reclamo = [fecha_hora, nro_cliente, sector, nombre, direccion, telefono,
-                                tipo_reclamo, detalles, estado, tecnico, nota, atendido_por]
+                                tipo_reclamo, detalles, estado, tecnico, "", atendido_por]
                 try:
                     sheet_reclamos.append_row(fila_reclamo)
                     st.success("✅ Reclamo guardado correctamente.")
                     if nro_cliente not in df_clientes["Nº Cliente"].values:
-                        fila_cliente = [nro_cliente, sector, nombre, direccion, telefono]
+                        fila_cliente = [nro_cliente, sector, nombre, direccion, telefono, precinto]
                         sheet_clientes.append_row(fila_cliente)
                         st.info("🗂️ Nuevo cliente agregado a la base de datos.")
                 except Exception as e:
@@ -159,49 +159,6 @@ if opcion == "Inicio":
 
     st.divider()
     st.subheader("📊 Reclamos cargados")
-    try:
-        df = df_reclamos.copy()
-        df["Fecha y hora"] = pd.to_datetime(df["Fecha y hora"], errors="coerce")
-        df = df.sort_values("Fecha y hora", ascending=False)
-
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            filtro_estado = st.selectbox("🔎 Filtrar por estado", ["Todos"] + sorted(df["Estado"].unique()))
-        with col2:
-            filtro_sector = st.selectbox("🏙️ Filtrar por sector", ["Todos"] + sorted(df["Sector"].unique()))
-        with col3:
-            filtro_tipo = st.selectbox("📌 Filtrar por tipo", ["Todos"] + sorted(df["Tipo de reclamo"].unique()))
-
-        if filtro_estado != "Todos":
-            df = df[df["Estado"] == filtro_estado]
-        if filtro_sector != "Todos":
-            df = df[df["Sector"] == filtro_sector]
-        if filtro_tipo != "Todos":
-            df = df[df["Tipo de reclamo"] == filtro_tipo]
-
-        edited_df = st.data_editor(
-            df,
-            use_container_width=True,
-            num_rows="dynamic",
-            key="editor",
-            column_config={
-                "Estado": st.column_config.SelectboxColumn("Estado", options=["Pendiente", "En curso", "Resuelto"]),
-                "Técnico": st.column_config.TextColumn("Técnico asignado"),
-                "Nota": st.column_config.TextColumn("Nota de seguimiento")
-            }
-        )
-
-        if st.button("💾 Guardar cambios en Google Sheets"):
-            try:
-                edited_df = edited_df.astype(str)
-                sheet_reclamos.clear()
-                sheet_reclamos.append_row(edited_df.columns.tolist())
-                sheet_reclamos.append_rows(edited_df.values.tolist())
-                st.success("✅ Cambios guardados correctamente.")
-            except Exception as e:
-                st.error(f"❌ Error al guardar los cambios: {e}")
-    except Exception as e:
-        st.warning(f"⚠️ No se pudieron cargar los datos: {e}")
 
 # --- SECCIÓN 2: HISTORIAL POR CLIENTE ---
 if opcion == "Historial por cliente":
@@ -241,6 +198,7 @@ if opcion == "Editar cliente":
             nuevo_nombre = st.text_input("👤 Nombre", value=cliente_actual["Nombre"])
             nueva_direccion = st.text_input("📍 Dirección", value=cliente_actual["Dirección"])
             nuevo_telefono = st.text_input("📞 Teléfono", value=cliente_actual["Teléfono"])
+            nuevo_precinto = st.text_input("🔒 N° de Precinto", value=cliente_actual.get("N° de Precinto", ""))
 
             if st.button("💾 Actualizar datos del cliente"):
                 try:
@@ -249,6 +207,7 @@ if opcion == "Editar cliente":
                     sheet_clientes.update(f"C{index}", nuevo_nombre)
                     sheet_clientes.update(f"D{index}", nueva_direccion)
                     sheet_clientes.update(f"E{index}", nuevo_telefono)
+                    sheet_clientes.update(f"F{index}", nuevo_precinto)
                     st.success("✅ Cliente actualizado correctamente.")
                 except Exception as e:
                     st.error(f"❌ Error al actualizar: {e}")
@@ -261,9 +220,10 @@ if opcion == "Imprimir reclamos":
 
     try:
         df_pdf = df_reclamos.copy()
+        df_merged = pd.merge(df_pdf, df_clientes[["Nº Cliente", "N° de Precinto"]], on="Nº Cliente", how="left")
 
         st.info("🕒 Reclamos pendientes de resolución")
-        df_pendientes = df_pdf[df_pdf["Estado"] == "Pendiente"]
+        df_pendientes = df_merged[df_merged["Estado"] == "Pendiente"]
         if not df_pendientes.empty:
             st.dataframe(df_pendientes[["Fecha y hora", "Nº Cliente", "Nombre", "Tipo de reclamo", "Técnico"]], use_container_width=True)
         else:
@@ -272,10 +232,10 @@ if opcion == "Imprimir reclamos":
         solo_pendientes = st.checkbox("🧾 Mostrar solo reclamos pendientes para imprimir")
 
         if solo_pendientes:
-            df_pdf = df_pdf[df_pdf["Estado"] == "Pendiente"]
+            df_merged = df_merged[df_merged["Estado"] == "Pendiente"]
 
-        selected = st.multiselect("Seleccioná los reclamos a imprimir:", df_pdf.index,
-                                  format_func=lambda x: f"{df_pdf.at[x, 'Nº Cliente']} - {df_pdf.at[x, 'Nombre']}")
+        selected = st.multiselect("Seleccioná los reclamos a imprimir:", df_merged.index,
+                                  format_func=lambda x: f"{df_merged.at[x, 'Nº Cliente']} - {df_merged.at[x, 'Nombre']}")
 
         if st.button("📄 Generar PDF con seleccionados") and selected:
             buffer = io.BytesIO()
@@ -284,15 +244,16 @@ if opcion == "Imprimir reclamos":
             y = height - 40
 
             for i, idx in enumerate(selected):
-                reclamo = df_pdf.loc[idx]
+                reclamo = df_merged.loc[idx]
                 c.setFont("Helvetica-Bold", 16)
                 c.drawString(40, y, f"Reclamo #{reclamo['Nº Cliente']}")
                 y -= 15
                 c.setFont("Helvetica", 12)
+                precinto_str = f" - Precinto: {reclamo['N° de Precinto']}" if reclamo.get("N° de Precinto") else ""
                 lineas = [
                     f"Fecha: {reclamo['Fecha y hora']} - Cliente: {reclamo['Nombre']} ({reclamo['Nº Cliente']})",
                     f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
-                    f"Sector: {reclamo['Sector']} - Técnico: {reclamo['Técnico']}",
+                    f"Sector: {reclamo['Sector']}{precinto_str} - Técnico: {reclamo['Técnico']}",
                     f"Tipo: {reclamo['Tipo de reclamo']}",
                     f"Detalles: {reclamo['Detalles'][:80]}..." if len(reclamo['Detalles']) > 80 else f"Detalles: {reclamo['Detalles']}",
                 ]
