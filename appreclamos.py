@@ -134,13 +134,36 @@ if opcion == "Inicio":
                 argentina = pytz.timezone("America/Argentina/Buenos_Aires")
                 fecha_hora = datetime.now(argentina).strftime("%Y-%m-%d %H:%M:%S")
                 tecnico_str = ", ".join(tecnico_seleccionado)
-                fila_reclamo = [fecha_hora, nro_cliente, sector, nombre, direccion, telefono,
-                                tipo_reclamo, detalles, estado, tecnico_str, precinto, atendido_por]
+
+                # Crear la fila del reclamo, convirtiendo campos seleccionados a mayúsculas
+                fila_reclamo = [
+                    fecha_hora,
+                    nro_cliente,
+                    sector,
+                    nombre.upper(),
+                    direccion.upper(),
+                    telefono,
+                    tipo_reclamo,
+                    detalles.upper(),
+                    estado,
+                    tecnico_str,
+                    precinto,
+                    atendido_por.upper()
+                ]
+
                 try:
                     sheet_reclamos.append_row(fila_reclamo)
                     st.success("✅ Reclamo guardado correctamente.")
+
                     if nro_cliente not in df_clientes["Nº Cliente"].values:
-                        fila_cliente = [nro_cliente, sector, nombre, direccion, telefono, precinto]
+                        fila_cliente = [
+                            nro_cliente,
+                            sector,
+                            nombre.upper(),
+                            direccion.upper(),
+                            telefono,
+                            precinto
+                        ]
                         sheet_clientes.append_row(fila_cliente)
                         st.info("🗂️ Nuevo cliente agregado a la base de datos.")
                 except Exception as e:
@@ -253,12 +276,12 @@ if opcion == "Editar cliente":
 
             if st.button("💾 Actualizar datos del cliente"):
                 try:
-                    index = cliente_row.index[0] + 2
-                    sheet_clientes.update(f"B{index}", nuevo_sector)
-                    sheet_clientes.update(f"C{index}", nuevo_nombre)
-                    sheet_clientes.update(f"D{index}", nueva_direccion)
-                    sheet_clientes.update(f"E{index}", nuevo_telefono)
-                    sheet_clientes.update(f"F{index}", nuevo_precinto)
+                    index = cliente_row.index[0] + 2  # +2 porque la hoja empieza en fila 2
+                    sheet_clientes.update(f"B{index}", nuevo_sector.upper())
+                    sheet_clientes.update(f"C{index}", nuevo_nombre.upper())
+                    sheet_clientes.update(f"D{index}", nueva_direccion.upper())
+                    sheet_clientes.update(f"E{index}", nuevo_telefono.upper())
+                    sheet_clientes.update(f"F{index}", nuevo_precinto.upper())
                     st.success("✅ Cliente actualizado correctamente.")
                 except Exception as e:
                     st.error(f"❌ Error al actualizar: {e}")
