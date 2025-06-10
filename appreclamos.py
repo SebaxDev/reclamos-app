@@ -312,7 +312,7 @@ if opcion == "Imprimir reclamos":
                         lineas = [
                             f"Fecha: {reclamo['Fecha y hora']} - Cliente: {reclamo['Nombre']} ({reclamo['Nº Cliente']})",
                             f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
-                            f"Sector: {reclamo['Sector']}{precinto_str} - Técnico: {reclamo['Técnico']}",
+                            f"Sector: {reclamo['Sector']} - Precinto: {reclamo.get('N° de Precinto', '')} - Técnico: {reclamo['Técnico']}",
                             f"Tipo: {reclamo['Tipo de reclamo']}",
                             f"Detalles: {reclamo['Detalles'][:80]}..." if len(reclamo['Detalles']) > 80 else f"Detalles: {reclamo['Detalles']}",
                         ]
@@ -360,7 +360,7 @@ if opcion == "Imprimir reclamos":
                 lineas = [
                     f"Fecha: {reclamo['Fecha y hora']} - Cliente: {reclamo['Nombre']} ({reclamo['Nº Cliente']})",
                     f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
-                    f"Sector: {reclamo['Sector']}{precinto_str} - Técnico: {reclamo['Técnico']}",
+                    f"Sector: {reclamo['Sector']} - Precinto: {reclamo.get('N° de Precinto', '')} - Técnico: {reclamo['Técnico']}",
                     f"Tipo: {reclamo['Tipo de reclamo']}",
                     f"Detalles: {reclamo['Detalles'][:80]}..." if len(reclamo['Detalles']) > 80 else f"Detalles: {reclamo['Detalles']}",
                 ]
