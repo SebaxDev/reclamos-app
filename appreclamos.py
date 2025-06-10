@@ -47,7 +47,7 @@ st.title("📋 Fusion Reclamos App")
 
 # --- METRICAS RESUMEN ---
 try:
-    df_metricas = df_reclamos.copy()
+                    df_metricas = df_reclamos.copy()
     total = len(df_metricas)
     pendientes = len(df_metricas[df_metricas["Estado"] == "Pendiente"])
     resueltos = len(df_metricas[df_metricas["Estado"] == "Resuelto"])
@@ -138,6 +138,7 @@ if opcion == "Inicio":
                 try:
                     sheet_reclamos.append_row(fila_reclamo)
                     st.success("✅ Reclamo guardado correctamente.")
+                st.balloons()
             st.balloons()
                     if nro_cliente not in df_clientes["Nº Cliente"].values:
                         fila_cliente = [nro_cliente, sector, nombre, direccion, telefono]
