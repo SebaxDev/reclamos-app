@@ -282,6 +282,62 @@ if opcion == "Imprimir reclamos":
 
         solo_pendientes = st.checkbox("🧾 Mostrar solo reclamos pendientes para imprimir")
 
+        # --- NUEVA FUNCIÓN: Imprimir por tipo de reclamo ---
+        st.markdown("### 🧾 Imprimir reclamos por tipo")
+
+        tipos_disponibles = sorted(df_merged["Tipo de reclamo"].unique())
+        tipos_seleccionados = st.multiselect("Seleccioná tipos de reclamo a imprimir", tipos_disponibles)
+
+        if tipos_seleccionados:
+            reclamos_filtrados = df_merged[
+                (df_merged["Estado"] == "Pendiente") & 
+                (df_merged["Tipo de reclamo"].isin(tipos_seleccionados))
+            ]
+
+            if not reclamos_filtrados.empty:
+                st.success(f"Se encontraron {len(reclamos_filtrados)} reclamos pendientes de los tipos seleccionados.")
+
+                if st.button("📄 Generar PDF de reclamos por tipo"):
+                    buffer = io.BytesIO()
+                    c = canvas.Canvas(buffer, pagesize=A4)
+                    width, height = A4
+                    y = height - 40
+
+                    for i, (_, reclamo) in enumerate(reclamos_filtrados.iterrows()):
+                        c.setFont("Helvetica-Bold", 16)
+                        c.drawString(40, y, f"Reclamo #{reclamo['Nº Cliente']}")
+                        y -= 15
+                        c.setFont("Helvetica", 12)
+                        precinto_str = f" - Precinto: {reclamo['N° de Precinto']}" if reclamo.get("N° de Precinto") else ""
+                        lineas = [
+                            f"Fecha: {reclamo['Fecha y hora']} - Cliente: {reclamo['Nombre']} ({reclamo['Nº Cliente']})",
+                            f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
+                            f"Sector: {reclamo['Sector']}{precinto_str} - Técnico: {reclamo['Técnico']}",
+                            f"Tipo: {reclamo['Tipo de reclamo']}",
+                            f"Detalles: {reclamo['Detalles'][:80]}..." if len(reclamo['Detalles']) > 80 else f"Detalles: {reclamo['Detalles']}",
+                        ]
+                        for linea in lineas:
+                            c.drawString(40, y, linea)
+                            y -= 12
+                        y -= 8
+                        c.drawString(40, y, "Firma técnico: _____________________________")
+                        y -= 25
+                        if y < 150 and i < len(reclamos_filtrados) - 1:
+                            c.showPage()
+                            y = height - 40
+
+                    c.save()
+                    buffer.seek(0)
+                    st.download_button(
+                        label="📥 Descargar PDF filtrado por tipo",
+                        data=buffer,
+                        file_name="reclamos_filtrados_por_tipo.pdf",
+                        mime="application/pdf"
+                    )
+            else:
+                st.info("No hay reclamos pendientes para los tipos seleccionados.")
+
+        # --- FUNCIONALIDAD ORIGINAL: selección manual ---
         if solo_pendientes:
             df_merged = df_merged[df_merged["Estado"] == "Pendiente"]
 
