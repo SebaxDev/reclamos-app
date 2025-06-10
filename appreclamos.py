@@ -118,7 +118,7 @@ if opcion == "Inicio":
                 "Suma Cable", "Reconexion", "Sin Señal Ambos", "Sin Señal Cable",
                 "Sin Señal Internet", "Sintonia", "Interferencia", "Traslado",
                 "Extension x2", "Extension x3", "Extension x4", "Cambio de Ficha",
-                "Cambio de Equipo", "Reclamo"])
+                "Cambio de Equipo", "Reclamo", "Desconexion a Pedido"])
 
             detalles = st.text_area("📝 Detalles del Reclamo")
             estado = st.selectbox("⚙️ Estado del Reclamo", ["Pendiente", "En curso", "Resuelto"], index=0)
@@ -144,7 +144,7 @@ if opcion == "Inicio":
                         sheet_clientes.append_row(fila_cliente)
                         st.info("🗂️ Nuevo cliente agregado a la base de datos.")
                 except Exception as e:
-                    st.error(f"❌ Error al guardar: {e}")
+                    st.error(f"❌ Error al guardar los datos: {e}")
 
 # --- SECCIÓN 2: RECLAMOS CARGADOS ---
 if opcion == "Reclamos cargados":
