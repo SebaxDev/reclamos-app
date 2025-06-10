@@ -11,20 +11,24 @@ import io
 # --- LOGIN CON SECRETS ---
 if "logueado" not in st.session_state:
     st.session_state.logueado = False
+if "usuario_actual" not in st.session_state:
+    st.session_state.usuario_actual = ""
 
 if not st.session_state.logueado:
+    st.title("🔐 Iniciar sesión")
     with st.form("login_formulario"):
-        st.title("🔐 Iniciar sesión")
         usuario = st.text_input("Usuario")
         password = st.text_input("Contraseña", type="password")
         enviar = st.form_submit_button("Ingresar")
 
-        if enviar:
-            if usuario in st.secrets["auth"] and st.secrets["auth"][usuario] == password:
-                st.session_state.logueado = True
-                st.success("✅ Acceso concedido. Recargá la página si no continúa automáticamente.")
-            else:
-                st.error("❌ Usuario o contraseña incorrectos")
+    if enviar:
+        if usuario in st.secrets["auth"] and st.secrets["auth"][usuario] == password:
+            st.session_state.logueado = True
+            st.session_state.usuario_actual = usuario
+            st.success("✅ Acceso concedido. Redirigiendo...")
+            st.experimental_rerun()
+        else:
+            st.error("❌ Usuario o contraseña incorrectos")
     st.stop()
 
 # --- ESTILO VISUAL GLOBAL ---
