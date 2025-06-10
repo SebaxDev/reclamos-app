@@ -179,11 +179,7 @@ if opcion == "Reclamos cargados":
             key="editor",
             column_config={
                 "Estado": st.column_config.SelectboxColumn("Estado", options=["Pendiente", "En curso", "Resuelto"]),
-                "Técnico": st.column_config.MultiSelectColumn(
-                    "Técnico asignado",
-                    options=tecnicos_disponibles,
-                    required=False
-                ),
+                "Técnico": st.column_config.TextColumn("Técnico asignado"),
                 "N° de Precinto": st.column_config.TextColumn("N° de Precinto")
             }
         )
