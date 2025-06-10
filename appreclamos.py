@@ -68,27 +68,7 @@ df_reclamos = pd.DataFrame(reclamos_data)
 df_clientes["Nº Cliente"] = df_clientes["Nº Cliente"].apply(lambda x: str(int(x)).strip() if isinstance(x, (int, float)) else str(x).strip())
 df_reclamos["Nº Cliente"] = df_reclamos["Nº Cliente"].apply(lambda x: str(int(x)).strip() if isinstance(x, (int, float)) else str(x).strip())
 df_clientes["N° de Precinto"] = df_clientes["N° de Precinto"].apply(lambda x: str(int(x)).strip() if isinstance(x, (int, float)) else str(x).strip())
-
-# --- TÍTULO Y DASHBOARD ---
-st.title("📋 Fusion Reclamos App")
-
-# --- METRICAS RESUMEN ---
-try:
-    df_metricas = df_reclamos.copy()
-    total = len(df_metricas)
-    pendientes = len(df_metricas[df_metricas["Estado"] == "Pendiente"])
-    resueltos = len(df_metricas[df_metricas["Estado"] == "Resuelto"])
-    en_curso = len(df_metricas[df_metricas["Estado"] == "En curso"])
-
-    colm1, colm2, colm3, colm4 = st.columns(4)
-    colm1.metric("📄 Total", total)
-    colm2.metric("🕒 Pendientes", pendientes)
-    colm3.metric("🔧 En curso", en_curso)
-    colm4.metric("✅ Resueltos", resueltos)
-except:
-    st.info("No hay datos disponibles para mostrar métricas aún.")
-
-st.divider()
+df_reclamos["N° de Precinto"] = df_reclamos["N° de Precinto"].apply(lambda x: str(int(x)).strip() if isinstance(x, (int, float)) else str(x).strip())
 
 # --- MENÚ DE NAVEGACIÓN ---
 opcion = st.radio("📂 Ir a la sección:", ["Inicio", "Reclamos cargados", "Historial por cliente", "Editar cliente", "Imprimir reclamos"], horizontal=True)
@@ -167,8 +147,9 @@ if opcion == "Reclamos cargados":
     st.subheader("📊 Reclamos cargados")
     try:
         df = df_reclamos.copy()
-        df_clientes["Nº Cliente"] = df_clientes["Nº Cliente"].astype(str)
-        df = pd.merge(df, df_clientes[["Nº Cliente", "N° de Precinto"]], on="Nº Cliente", how="left")
+        df["Nº Cliente"] = df["Nº Cliente"].astype(str).str.strip()
+        df_clientes["Nº Cliente"] = df_clientes["Nº Cliente"].astype(str).str.strip()
+        df = pd.merge(df, df_clientes[["Nº Cliente", "N° de Precinto"]], on="Nº Cliente", how="left", suffixes=("", "_cliente"))
         df["Fecha y hora"] = pd.to_datetime(df["Fecha y hora"], errors="coerce")
         df = df.sort_values("Fecha y hora", ascending=False)
 
@@ -203,7 +184,7 @@ if opcion == "Reclamos cargados":
             try:
                 edited_df = edited_df.astype(str)
 
-                # Actualizar hoja de reclamos
+                # Guardar en hoja de reclamos
                 sheet_reclamos.clear()
                 sheet_reclamos.append_row(edited_df.columns.tolist())
                 sheet_reclamos.append_rows(edited_df.values.tolist())
