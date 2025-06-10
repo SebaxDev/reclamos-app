@@ -70,6 +70,9 @@ df_reclamos["Nº Cliente"] = df_reclamos["Nº Cliente"].apply(lambda x: str(int(
 df_clientes["N° de Precinto"] = df_clientes["N° de Precinto"].apply(lambda x: str(int(x)).strip() if isinstance(x, (int, float)) else str(x).strip())
 df_reclamos["N° de Precinto"] = df_reclamos["N° de Precinto"].apply(lambda x: str(int(x)).strip() if isinstance(x, (int, float)) else str(x).strip())
 
+# --- LISTA DE TÉCNICOS DISPONIBLES ---
+tecnicos_disponibles = ["Braian", "Conejo", "Juan", "Junior", "Maxi", "Ramon", "Roque", "Viki", "Oficina", "Base"]
+
 # --- MENÚ DE NAVEGACIÓN ---
 opcion = st.radio("📂 Ir a la sección:", ["Inicio", "Reclamos cargados", "Historial por cliente", "Editar cliente", "Imprimir reclamos"], horizontal=True)
 
@@ -119,8 +122,8 @@ if opcion == "Inicio":
 
             detalles = st.text_area("📝 Detalles del Reclamo")
             estado = st.selectbox("⚙️ Estado del Reclamo", ["Pendiente", "En curso", "Resuelto"], index=0)
-            tecnico = st.text_input("👷 Técnico asignado (opcional)")
-            precinto = st.text_input("🔐 N° de Precinto (opcional)", value=cliente_existente.get("N° de Precinto", "") if cliente_existente is not None else "")
+            tecnico_seleccionado = st.multiselect("👷 Técnico asignado (puede dejarse vacío o elegir múltiples)", tecnicos_disponibles)
+            precinto = st.text_input("🔒 N° de Precinto (opcional)", value=cliente_existente.get("N° de Precinto", "") if cliente_existente is not None else "")
             atendido_por = st.text_input("👤 Atendido por")
             enviado = st.form_submit_button("✅ Guardar Reclamo")
 
@@ -130,8 +133,9 @@ if opcion == "Inicio":
             else:
                 argentina = pytz.timezone("America/Argentina/Buenos_Aires")
                 fecha_hora = datetime.now(argentina).strftime("%Y-%m-%d %H:%M:%S")
+                tecnico_str = ", ".join(tecnico_seleccionado)
                 fila_reclamo = [fecha_hora, nro_cliente, sector, nombre, direccion, telefono,
-                                tipo_reclamo, detalles, estado, tecnico, "", atendido_por]
+                                tipo_reclamo, detalles, estado, tecnico_str, precinto, atendido_por]
                 try:
                     sheet_reclamos.append_row(fila_reclamo)
                     st.success("✅ Reclamo guardado correctamente.")
@@ -175,13 +179,21 @@ if opcion == "Reclamos cargados":
             key="editor",
             column_config={
                 "Estado": st.column_config.SelectboxColumn("Estado", options=["Pendiente", "En curso", "Resuelto"]),
-                "Técnico": st.column_config.TextColumn("Técnico asignado"),
+                "Técnico": st.column_config.MultiSelectColumn(
+                    "Técnico asignado",
+                    options=tecnicos_disponibles,
+                    required=False
+                ),
                 "N° de Precinto": st.column_config.TextColumn("N° de Precinto")
             }
         )
 
         if st.button("💾 Guardar cambios en Google Sheets"):
             try:
+                # Convertir técnico (list) a string si corresponde
+                if isinstance(edited_df.iloc[0]["Técnico"], list):
+                    edited_df["Técnico"] = edited_df["Técnico"].apply(lambda lista: ", ".join(lista) if isinstance(lista, list) else lista)
+
                 edited_df = edited_df.astype(str)
 
                 # Guardar en hoja de reclamos
@@ -200,8 +212,6 @@ if opcion == "Reclamos cargados":
                 st.success("✅ Cambios guardados correctamente en ambas hojas.")
             except Exception as e:
                 st.error(f"❌ Error al guardar los cambios: {e}")
-    except Exception as e:
-        st.warning(f"⚠️ No se pudieron cargar los datos: {e}")
 
 # --- SECCIÓN 3: HISTORIAL POR CLIENTE ---
 if opcion == "Historial por cliente":
