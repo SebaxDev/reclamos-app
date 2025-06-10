@@ -240,48 +240,61 @@ if opcion == "Imprimir reclamos":
     try:
         df_pdf = df_reclamos.copy()
 
-        if not df_pdf.empty:
-            selected = st.multiselect("Seleccioná los reclamos a imprimir:", df_pdf.index,
-                                      format_func=lambda x: f"{df_pdf.at[x, 'Nº Cliente']} - {df_pdf.at[x, 'Nombre']}")
-
-            if st.button("📄 Generar PDF con seleccionados") and selected:
-                buffer = io.BytesIO()
-                c = canvas.Canvas(buffer, pagesize=A4)
-                width, height = A4
-                y = height - 40
-
-                for i, idx in enumerate(selected):
-                    reclamo = df_pdf.loc[idx]
-                    c.setFont("Helvetica-Bold", 17)
-                    c.drawString(40, y, f"Reclamo #{idx + 1}")
-                    y -= 15
-                    c.setFont("Helvetica", 12)
-                    lineas = [
-                        f"Fecha: {reclamo['Fecha y hora']} - Cliente: {reclamo['Nombre']} ({reclamo['Nº Cliente']})",
-                        f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
-                        f"Sector: {reclamo['Sector']} - Técnico: {reclamo['Técnico']}",
-                        f"Tipo: {reclamo['Tipo de reclamo']}",
-                        f"Detalles: {reclamo['Detalles'][:80]}..." if len(reclamo['Detalles']) > 80 else f"Detalles: {reclamo['Detalles']}",
-                    ]
-                    for linea in lineas:
-                        c.drawString(40, y, linea)
-                        y -= 12
-                    y -= 8
-                    c.drawString(40, y, "Firma técnico: _____________________________")
-                    y -= 25
-                    if y < 150 and i < len(selected) - 1:
-                        c.showPage()
-                        y = height - 40
-
-                c.save()
-                buffer.seek(0)
-                st.download_button(
-                    label="📥 Descargar PDF",
-                    data=buffer,
-                    file_name="reclamos_seleccionados.pdf",
-                    mime="application/pdf"
-                )
+        st.info("🕒 Reclamos pendientes de resolución")
+        df_pendientes = df_pdf[df_pdf["Estado"] == "Pendiente"]
+        if not df_pendientes.empty:
+            st.dataframe(df_pendientes[["Fecha y hora", "Nº Cliente", "Nombre", "Tipo de reclamo", "Técnico"]], use_container_width=True)
         else:
-            st.info("No hay reclamos disponibles para imprimir.")
+            st.success("✅ No hay reclamos pendientes actualmente.")
+
+        solo_pendientes = st.checkbox("🧾 Mostrar solo reclamos pendientes para imprimir")
+
+        if solo_pendientes:
+            df_pdf = df_pdf[df_pdf["Estado"] == "Pendiente"]
+
+        selected = st.multiselect("Seleccioná los reclamos a imprimir:", df_pdf.index,
+                                  format_func=lambda x: f"{df_pdf.at[x, 'Nº Cliente']} - {df_pdf.at[x, 'Nombre']}")
+
+        if st.button("📄 Generar PDF con seleccionados") and selected:
+            buffer = io.BytesIO()
+            c = canvas.Canvas(buffer, pagesize=A4)
+            width, height = A4
+            y = height - 40
+
+            for i, idx in enumerate(selected):
+                reclamo = df_pdf.loc[idx]
+                c.setFont("Helvetica-Bold", 16)
+                c.drawString(40, y, f"Reclamo #{reclamo['Nº Cliente']}")
+                y -= 15
+                c.setFont("Helvetica", 12)
+                lineas = [
+                    f"Fecha: {reclamo['Fecha y hora']} - Cliente: {reclamo['Nombre']} ({reclamo['Nº Cliente']})",
+                    f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
+                    f"Sector: {reclamo['Sector']} - Técnico: {reclamo['Técnico']}",
+                    f"Tipo: {reclamo['Tipo de reclamo']}",
+                    f"Detalles: {reclamo['Detalles'][:80]}..." if len(reclamo['Detalles']) > 80 else f"Detalles: {reclamo['Detalles']}",
+                ]
+                for linea in lineas:
+                    c.drawString(40, y, linea)
+                    y -= 12
+                y -= 8
+                c.drawString(40, y, "Firma técnico: _____________________________")
+                y -= 25
+                if y < 150 and i < len(selected) - 1:
+                    c.showPage()
+                    y = height - 40
+
+            c.save()
+            buffer.seek(0)
+            st.download_button(
+                label="📥 Descargar PDF",
+                data=buffer,
+                file_name="reclamos_seleccionados.pdf",
+                mime="application/pdf"
+            )
+
+        elif not selected:
+            st.info("Seleccioná al menos un reclamo para generar el PDF.")
+
     except Exception as e:
         st.error(f"❌ Error al generar PDF: {e}")
