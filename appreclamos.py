@@ -250,7 +250,7 @@ if opcion == "Historial por cliente":
             st.success(f"🔎 Se encontraron {len(historial)} reclamos para el cliente {historial_cliente}.")
             st.dataframe(
                 historial[
-                    ["Fecha y hora", "Tipo de reclamo", "Estado", "Técnico", "Nota", "Detalles"]
+                    ["Fecha y hora", "Tipo de reclamo", "Estado", "Técnico", "N° de Precinto", "Detalles"]
                 ],
                 use_container_width=True
             )
