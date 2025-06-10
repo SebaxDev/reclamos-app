@@ -148,9 +148,6 @@ if opcion == "Inicio":
 
 # --- SECCIÓN 2: RECLAMOS CARGADOS ---
 
-except Exception as e:
-    st.error(f"❌ Error al guardar los datos: {e}")
-
 if opcion == "Reclamos cargados":
     st.subheader("📊 Reclamos cargados")
     try:
