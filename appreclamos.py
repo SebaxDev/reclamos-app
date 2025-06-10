@@ -138,7 +138,7 @@ if opcion == "Inicio":
                 try:
                     sheet_reclamos.append_row(fila_reclamo)
                     st.success("✅ Reclamo guardado correctamente.")
-st.balloons()
+            st.balloons()
                     if nro_cliente not in df_clientes["Nº Cliente"].values:
                         fila_cliente = [nro_cliente, sector, nombre, direccion, telefono]
                         sheet_clientes.append_row(fila_cliente)
@@ -276,10 +276,10 @@ if opcion == "Imprimir reclamos":
 
             for i, idx in enumerate(selected):
                 reclamo = df_pdf.loc[idx]
-                c.setFont("Helvetica-Bold", 16)
+                c.setFont("Helvetica-Bold", 11)
                 c.drawString(40, y, f"Reclamo #{reclamo['Nº Cliente']}")
                 y -= 15
-                c.setFont("Helvetica", 12)
+                c.setFont("Helvetica", 9)
                 lineas = [
                     f"Fecha: {reclamo['Fecha y hora']} - Cliente: {reclamo['Nombre']} ({reclamo['Nº Cliente']})",
                     f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
@@ -327,10 +327,10 @@ st.download_button(
                 y = height - 40
 
                 for i, (_, reclamo) in enumerate(df_filtrado.iterrows()):
-                    c.setFont("Helvetica-Bold", 16)
+                    c.setFont("Helvetica-Bold", 11)
                     c.drawString(40, y, f"Reclamo #{reclamo['Nº Cliente']}")
                     y -= 15
-                    c.setFont("Helvetica", 12)
+                    c.setFont("Helvetica", 9)
                     lineas = [
                         f"Fecha: {reclamo['Fecha y hora']} - Cliente: {reclamo['Nombre']} ({reclamo['Nº Cliente']})",
                         f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
