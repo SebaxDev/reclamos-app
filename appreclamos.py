@@ -47,7 +47,7 @@ st.title("📋 Fusion Reclamos App")
 
 # --- METRICAS RESUMEN ---
 try:
-                    df_metricas = df_reclamos.copy()
+    df_metricas = df_reclamos.copy()
     total = len(df_metricas)
     pendientes = len(df_metricas[df_metricas["Estado"] == "Pendiente"])
     resueltos = len(df_metricas[df_metricas["Estado"] == "Resuelto"])
@@ -277,10 +277,10 @@ if opcion == "Imprimir reclamos":
 
             for i, idx in enumerate(selected):
                 reclamo = df_pdf.loc[idx]
-                c.setFont("Helvetica-Bold", 11)
+                c.setFont("Helvetica-Bold", 16)
                 c.drawString(40, y, f"Reclamo #{reclamo['Nº Cliente']}")
                 y -= 15
-                c.setFont("Helvetica", 9)
+                c.setFont("Helvetica", 12)
                 lineas = [
                     f"Fecha: {reclamo['Fecha y hora']} - Cliente: {reclamo['Nombre']} ({reclamo['Nº Cliente']})",
                     f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
@@ -328,10 +328,10 @@ st.download_button(
                 y = height - 40
 
                 for i, (_, reclamo) in enumerate(df_filtrado.iterrows()):
-                    c.setFont("Helvetica-Bold", 11)
+                    c.setFont("Helvetica-Bold", 16)
                     c.drawString(40, y, f"Reclamo #{reclamo['Nº Cliente']}")
                     y -= 15
-                    c.setFont("Helvetica", 9)
+                    c.setFont("Helvetica", 12)
                     lineas = [
                         f"Fecha: {reclamo['Fecha y hora']} - Cliente: {reclamo['Nombre']} ({reclamo['Nº Cliente']})",
                         f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
