@@ -67,6 +67,16 @@ st.divider()
 opcion = st.radio("📂 Ir a la sección:", ["Inicio", "Historial por cliente", "Editar cliente", "Imprimir reclamos"], horizontal=True)
 
 # --- SECCIÓN 1: INICIO (CARGA + LISTA DE RECLAMOS) ---
+# --- FUNCIONES VISUALES DE ESTADO ---
+def estado_icono(estado):
+    if estado == "Pendiente":
+        return "🔴 Pendiente"
+    elif estado == "En curso":
+        return "🟠 En curso"
+    elif estado == "Resuelto":
+        return "✅ Resuelto"
+    else:
+        return estado
 if opcion == "Inicio":
     st.subheader("📝 Cargar nuevo reclamo")
     nro_cliente = st.text_input("🔢 N° de Cliente").strip()
@@ -128,6 +138,7 @@ if opcion == "Inicio":
                 try:
                     sheet_reclamos.append_row(fila_reclamo)
                     st.success("✅ Reclamo guardado correctamente.")
+st.balloons()
                     if nro_cliente not in df_clientes["Nº Cliente"].values:
                         fila_cliente = [nro_cliente, sector, nombre, direccion, telefono]
                         sheet_clientes.append_row(fila_cliente)
@@ -139,25 +150,20 @@ if opcion == "Inicio":
     st.subheader("📊 Reclamos cargados")
     try:
         df = df_reclamos.copy()
-        df["Fecha y hora"] = pd.to_datetime(df["Fecha y hora"], errors="coerce")
-        df = df.sort_values("Fecha y hora", ascending=False)
+df["Fecha y hora"] = pd.to_datetime(df["Fecha y hora"], errors="coerce")
+df = df.sort_values("Fecha y hora", ascending=False)
+df["Estado"] = df["Estado"].apply(estado_icono)
 
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            filtro_estado = st.selectbox("🔎 Filtrar por estado", ["Todos"] + sorted(df["Estado"].unique()))
-        with col2:
-            filtro_sector = st.selectbox("🏙️ Filtrar por sector", ["Todos"] + sorted(df["Sector"].unique()))
-        with col3:
-            filtro_tipo = st.selectbox("📌 Filtrar por tipo", ["Todos"] + sorted(df["Tipo de reclamo"].unique()))
+agrupado = df.groupby(df["Fecha y hora"].dt.date)
+for fecha, datos in agrupado:
+    with st.expander(f"📅 {fecha.strftime('%d/%m/%Y')}"):
+        st.dataframe(datos, use_container_width=True)
 
-        if filtro_estado != "Todos":
-            df = df[df["Estado"] == filtro_estado]
-        if filtro_sector != "Todos":
-            df = df[df["Sector"] == filtro_sector]
-        if filtro_tipo != "Todos":
-            df = df[df["Tipo de reclamo"] == filtro_tipo]
+# Edición directa activada sobre todo el dataframe
+# Mostrar advertencia
+st.info("🖊️ Hacé scroll hasta el final para editar reclamos directamente.")
 
-        edited_df = st.data_editor(
+edited_df = st.data_editor(
             df,
             use_container_width=True,
             num_rows="dynamic",
@@ -293,7 +299,8 @@ if opcion == "Imprimir reclamos":
 
             c.save()
             buffer.seek(0)
-            st.download_button(
+            st.toast("✅ PDF generado con éxito")
+st.download_button(
                 label="📥 Descargar PDF",
                 data=buffer,
                 file_name="reclamos_seleccionados.pdf",
