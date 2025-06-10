@@ -103,7 +103,7 @@ if opcion == "Inicio":
         if not match.empty:
             cliente_existente = match.squeeze()
             st.success("✅ Cliente reconocido, datos auto-cargados.")
-        if not reclamos_pendientes.empty():
+        if not reclamos_pendientes.empty:
             st.error("⚠️ Este cliente ya tiene un reclamo pendiente. No se puede cargar uno nuevo hasta que se resuelva el anterior.")
             formulario_bloqueado = True
 
