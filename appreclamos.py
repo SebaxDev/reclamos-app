@@ -22,8 +22,7 @@ if not st.session_state.logueado:
         if enviar:
             if usuario in st.secrets["auth"] and st.secrets["auth"][usuario] == password:
                 st.session_state.logueado = True
-                st.success("✅ Acceso concedido")
-                st.experimental_rerun()
+                st.success("✅ Acceso concedido. Recargá la página si no continúa automáticamente.")
             else:
                 st.error("❌ Usuario o contraseña incorrectos")
     st.stop()
