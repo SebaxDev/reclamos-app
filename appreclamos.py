@@ -47,7 +47,7 @@ st.title("📋 Fusion Reclamos App")
 
 # --- METRICAS RESUMEN ---
 try:
-    df_metricas = df_reclamos.copy()
+                    df_metricas = df_reclamos.copy()
     total = len(df_metricas)
     pendientes = len(df_metricas[df_metricas["Estado"] == "Pendiente"])
     resueltos = len(df_metricas[df_metricas["Estado"] == "Resuelto"])
@@ -145,7 +145,7 @@ if opcion == "Inicio":
                         sheet_clientes.append_row(fila_cliente)
                         st.info("🗂️ Nuevo cliente agregado a la base de datos.")
                 except Exception as e:
-                    st.error(f"❌ Error al guardar: {e}")
+                st.error(f"❌ Error al guardar: {e}")
 
     st.divider()
     st.subheader("📊 Reclamos cargados")
