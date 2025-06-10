@@ -209,9 +209,11 @@ if opcion == "Reclamos cargados":
                         new_precinto = precinto_dict[cliente_id]
                         sheet_clientes.update(f"F{i + 2}", new_precinto)
 
-                st.success("✅ Cambios guardados correctamente en ambas hojas.")
+                st.success("✅ Cambios guardados correctamente.")
             except Exception as e:
                 st.error(f"❌ Error al guardar los cambios: {e}")
+    except Exception as e:
+        st.warning(f"⚠️ No se pudieron cargar los datos: {e}")
 
 # --- SECCIÓN 3: HISTORIAL POR CLIENTE ---
 if opcion == "Historial por cliente":
