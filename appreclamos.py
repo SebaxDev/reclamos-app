@@ -40,13 +40,16 @@ sheet_clientes = client.open_by_key(SHEET_ID).worksheet(WORKSHEET_CLIENTES)
 clientes_data = sheet_clientes.get_all_records()
 df_clientes = pd.DataFrame(clientes_data)
 
+# --- CARGAR BASE DE RECLAMOS ---
+reclamos_data = sheet_reclamos.get_all_records()
+df_reclamos = pd.DataFrame(reclamos_data)
+
 # --- TÍTULO Y DASHBOARD ---
 st.title("📋 Fusion Reclamos App")
 
 # --- METRICAS RESUMEN ---
 try:
-    data_metricas = sheet_reclamos.get_all_records()
-    df_metricas = pd.DataFrame(data_metricas)
+    df_metricas = df_reclamos.copy()
     total = len(df_metricas)
     pendientes = len(df_metricas[df_metricas["Estado"] == "Pendiente"])
     resueltos = len(df_metricas[df_metricas["Estado"] == "Resuelto"])
@@ -67,62 +70,72 @@ st.subheader("📝 Cargar nuevo reclamo")
 
 nro_cliente = st.text_input("🔢 N° de Cliente").strip()
 cliente_existente = None
+formulario_bloqueado = False
+
 if "Nº Cliente" in df_clientes.columns and nro_cliente:
     df_clientes["Nº Cliente"] = df_clientes["Nº Cliente"].astype(str).str.strip()
+    df_reclamos["Nº Cliente"] = df_reclamos["Nº Cliente"].astype(str).str.strip()
+
     match = df_clientes[df_clientes["Nº Cliente"] == nro_cliente]
+    reclamos_pendientes = df_reclamos[(df_reclamos["Nº Cliente"] == nro_cliente) & (df_reclamos["Estado"] == "Pendiente")]
+
     if not match.empty:
         cliente_existente = match.squeeze()
         st.success("✅ Cliente reconocido, datos auto-cargados.")
 
-with st.form("reclamo_formulario"):
-    col1, col2 = st.columns(2)
-    if cliente_existente is not None:
-        with col1:
-            sector = st.text_input("🏙️ Sector / Zona", value=cliente_existente["Sector"])
-            direccion = st.text_input("📍 Dirección", value=cliente_existente["Dirección"])
-        with col2:
-            nombre = st.text_input("👤 Nombre del Cliente", value=cliente_existente["Nombre"])
-            telefono = st.text_input("📞 Teléfono", value=cliente_existente["Teléfono"])
-    else:
-        with col1:
-            sector = st.text_input("🏙️ Sector / Zona")
-            direccion = st.text_input("📍 Dirección")
-        with col2:
-            nombre = st.text_input("👤 Nombre del Cliente")
-            telefono = st.text_input("📞 Teléfono")
+    if not reclamos_pendientes.empty:
+        st.error("⚠️ Este cliente ya tiene un reclamo pendiente. No se puede cargar uno nuevo hasta que se resuelva el anterior.")
+        formulario_bloqueado = True
 
-    tipo_reclamo = st.selectbox("📌 Tipo de Reclamo", [
-        "Conexion C+I", "Conexion Cable", "Conexion Internet", "Suma Internet",
-        "Suma Cable", "Reconexion", "Sin Señal Ambos", "Sin Señal Cable",
-        "Sin Señal Internet", "Sintonia", "Interferencia", "Traslado",
-        "Extension x2", "Extension x3", "Extension x4", "Cambio de Ficha",
-        "Cambio de Equipo", "Reclamo"])
+if not formulario_bloqueado:
+    with st.form("reclamo_formulario"):
+        col1, col2 = st.columns(2)
+        if cliente_existente is not None:
+            with col1:
+                sector = st.text_input("🏙️ Sector / Zona", value=cliente_existente["Sector"])
+                direccion = st.text_input("📍 Dirección", value=cliente_existente["Dirección"])
+            with col2:
+                nombre = st.text_input("👤 Nombre del Cliente", value=cliente_existente["Nombre"])
+                telefono = st.text_input("📞 Teléfono", value=cliente_existente["Teléfono"])
+        else:
+            with col1:
+                sector = st.text_input("🏙️ Sector / Zona")
+                direccion = st.text_input("📍 Dirección")
+            with col2:
+                nombre = st.text_input("👤 Nombre del Cliente")
+                telefono = st.text_input("📞 Teléfono")
 
-    detalles = st.text_area("📝 Detalles del Reclamo")
-    estado = st.selectbox("⚙️ Estado del Reclamo", ["Pendiente", "En curso", "Resuelto"], index=0)
-    tecnico = st.text_input("👷 Técnico asignado (opcional)")
-    nota = st.text_area("🗒️ Nota o seguimiento (opcional)")
-    atendido_por = st.text_input("👤 Atendido por")
-    enviado = st.form_submit_button("✅ Guardar Reclamo")
+        tipo_reclamo = st.selectbox("📌 Tipo de Reclamo", [
+            "Conexion C+I", "Conexion Cable", "Conexion Internet", "Suma Internet",
+            "Suma Cable", "Reconexion", "Sin Señal Ambos", "Sin Señal Cable",
+            "Sin Señal Internet", "Sintonia", "Interferencia", "Traslado",
+            "Extension x2", "Extension x3", "Extension x4", "Cambio de Ficha",
+            "Cambio de Equipo", "Reclamo"])
 
-if enviado:
-    if not nro_cliente:
-        st.error("⚠️ Debes ingresar un número de cliente.")
-    else:
-        argentina = pytz.timezone("America/Argentina/Buenos_Aires")
-        fecha_hora = datetime.now(argentina).strftime("%Y-%m-%d %H:%M:%S")
-        fila_reclamo = [fecha_hora, nro_cliente, sector, nombre, direccion, telefono,
-                        tipo_reclamo, detalles, estado, tecnico, nota, atendido_por]
-        try:
-            sheet_reclamos.append_row(fila_reclamo)
-            st.success("✅ Reclamo guardado correctamente.")
-            df_clientes["Nº Cliente"] = df_clientes["Nº Cliente"].astype(str).str.strip()
-            if nro_cliente not in df_clientes["Nº Cliente"].values:
-                fila_cliente = [nro_cliente, sector, nombre, direccion, telefono]
-                sheet_clientes.append_row(fila_cliente)
-                st.info("🗂️ Nuevo cliente agregado a la base de datos.")
-        except Exception as e:
-            st.error(f"❌ Error al guardar: {e}")
+        detalles = st.text_area("📝 Detalles del Reclamo")
+        estado = st.selectbox("⚙️ Estado del Reclamo", ["Pendiente", "En curso", "Resuelto"], index=0)
+        tecnico = st.text_input("👷 Técnico asignado (opcional)")
+        nota = st.text_area("🗒️ Nota o seguimiento (opcional)")
+        atendido_por = st.text_input("👤 Atendido por")
+        enviado = st.form_submit_button("✅ Guardar Reclamo")
+
+    if enviado:
+        if not nro_cliente:
+            st.error("⚠️ Debes ingresar un número de cliente.")
+        else:
+            argentina = pytz.timezone("America/Argentina/Buenos_Aires")
+            fecha_hora = datetime.now(argentina).strftime("%Y-%m-%d %H:%M:%S")
+            fila_reclamo = [fecha_hora, nro_cliente, sector, nombre, direccion, telefono,
+                            tipo_reclamo, detalles, estado, tecnico, nota, atendido_por]
+            try:
+                sheet_reclamos.append_row(fila_reclamo)
+                st.success("✅ Reclamo guardado correctamente.")
+                if nro_cliente not in df_clientes["Nº Cliente"].values:
+                    fila_cliente = [nro_cliente, sector, nombre, direccion, telefono]
+                    sheet_clientes.append_row(fila_cliente)
+                    st.info("🗂️ Nuevo cliente agregado a la base de datos.")
+            except Exception as e:
+                st.error(f"❌ Error al guardar: {e}")
 
 # --- VISUALIZACIÓN Y EDICIÓN DE RECLAMOS ---
 st.divider()
