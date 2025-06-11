@@ -487,8 +487,8 @@ if opcion == "Seguimiento técnico":
 
                 if st.button("💾 Actualizar reclamo"):
                     try:
-                        sheet_reclamos.update(f"I{index_reclamo}", nuevo_estado)
-                        sheet_reclamos.update(f"J{index_reclamo}", ", ".join(nuevos_tecnicos).upper())
+                        sheet_reclamos.update(f"I{index_reclamo}", [[nuevo_estado]])
+                        sheet_reclamos.update(f"J{index_reclamo}", [[", ".join(nuevos_tecnicos).upper()]])
                         st.success("✅ Reclamo actualizado correctamente.")
                     except Exception as e:
                         st.error(f"❌ Error al actualizar: {e}")
