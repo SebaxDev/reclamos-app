@@ -74,7 +74,7 @@ df_reclamos["N° de Precinto"] = df_reclamos["N° de Precinto"].apply(lambda x: 
 tecnicos_disponibles = ["Braian", "Conejo", "Juan", "Junior", "Maxi", "Ramon", "Roque", "Viki", "Oficina", "Base"]
 
 # --- MENÚ DE NAVEGACIÓN ---
-opcion = st.radio("📂 Ir a la sección:", ["Inicio", "Reclamos cargados", "Historial por cliente", "Editar cliente", "Imprimir reclamos"], horizontal=True)
+opcion = st.radio("📂 Ir a la sección:", ["Inicio", "Reclamos cargados", "Historial por cliente", "Editar cliente", "Imprimir reclamos", "Seguimiento técnico"], horizontal=True)
 
 # --- SECCIÓN 1: INICIO ---
 if opcion == "Inicio":
