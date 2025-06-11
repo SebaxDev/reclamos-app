@@ -73,6 +73,27 @@ df_reclamos["N° de Precinto"] = df_reclamos["N° de Precinto"].apply(lambda x: 
 # --- LISTA DE TÉCNICOS DISPONIBLES ---
 tecnicos_disponibles = ["Braian", "Conejo", "Juan", "Junior", "Maxi", "Ramon", "Roque", "Viki", "Oficina", "Base"]
 
+# --- TÍTULO Y DASHBOARD ---
+st.title("📋 Fusion Reclamos App")
+
+# --- METRICAS RESUMEN ---
+try:
+    df_metricas = df_reclamos.copy()
+    total = len(df_metricas)
+    pendientes = len(df_metricas[df_metricas["Estado"] == "Pendiente"])
+    resueltos = len(df_metricas[df_metricas["Estado"] == "Resuelto"])
+    en_curso = len(df_metricas[df_metricas["Estado"] == "En curso"])
+
+    colm1, colm2, colm3, colm4 = st.columns(4)
+    colm1.metric("📄 Total", total)
+    colm2.metric("🕒 Pendientes", pendientes)
+    colm3.metric("🔧 En curso", en_curso)
+    colm4.metric("✅ Resueltos", resueltos)
+except:
+    st.info("No hay datos disponibles para mostrar métricas aún.")
+
+st.divider()
+
 # --- MENÚ DE NAVEGACIÓN ---
 opcion = st.radio("📂 Ir a la sección:", ["Inicio", "Reclamos cargados", "Historial por cliente", "Editar cliente", "Imprimir reclamos", "Seguimiento técnico", "Cierre de Reclamos"], horizontal=True)
 
