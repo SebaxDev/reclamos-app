@@ -277,11 +277,11 @@ if opcion == "Editar cliente":
             if st.button("💾 Actualizar datos del cliente"):
                 try:
                     index = cliente_row.index[0] + 2  # +2 porque la hoja empieza en fila 2
-                    sheet_clientes.update(f"B{index}", nuevo_sector.upper())
-                    sheet_clientes.update(f"C{index}", nuevo_nombre.upper())
-                    sheet_clientes.update(f"D{index}", nueva_direccion.upper())
-                    sheet_clientes.update(f"E{index}", nuevo_telefono.upper())
-                    sheet_clientes.update(f"F{index}", nuevo_precinto.upper())
+                    sheet_clientes.update(f"B{index}", [[nuevo_sector.upper()]])
+                    sheet_clientes.update(f"C{index}", [[nuevo_nombre.upper()]])
+                    sheet_clientes.update(f"D{index}", [[nueva_direccion.upper()]])
+                    sheet_clientes.update(f"E{index}", [[nuevo_telefono.upper()]])
+                    sheet_clientes.update(f"F{index}", [[nuevo_precinto.upper()]])
                     st.success("✅ Cliente actualizado correctamente.")
                 except Exception as e:
                     st.error(f"❌ Error al actualizar: {e}")
