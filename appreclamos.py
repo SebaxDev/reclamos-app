@@ -460,3 +460,66 @@ if opcion == "Seguimiento técnico":
                         st.success("✅ Reclamo actualizado correctamente.")
                     except Exception as e:
                         st.error(f"❌ Error al actualizar: {e}")
+
+    # --- IMPRIMIR RECLAMOS EN CURSO ---
+    st.markdown("---")
+    st.markdown("### 🖨️ Imprimir reclamos 'En curso' (vista compacta)")
+
+    reclamos_en_curso = df_reclamos[
+        (df_reclamos["Estado"] == "En curso")
+    ].copy()
+
+    if reclamos_en_curso.empty:
+        st.info("No hay reclamos en curso para imprimir.")
+    else:
+        reclamos_en_curso["Fecha y hora"] = pd.to_datetime(reclamos_en_curso["Fecha y hora"], errors="coerce")
+        reclamos_en_curso = reclamos_en_curso.dropna(subset=["Fecha y hora"])
+        reclamos_en_curso = reclamos_en_curso.sort_values("Fecha y hora", ascending=False)
+
+        # Mostrar en pantalla
+        st.dataframe(
+            reclamos_en_curso[["Nº Cliente", "Nombre", "Tipo de reclamo", "Técnico"]],
+            use_container_width=True
+        )
+
+        if st.button("📄 Generar PDF de reclamos en curso"):
+            buffer = io.BytesIO()
+            c = canvas.Canvas(buffer, pagesize=A4)
+            width, height = A4
+
+            x_left = 40
+            x_right = width / 2 + 10
+            y = height - 40
+            columna_izquierda = True
+
+            for idx, reclamo in reclamos_en_curso.iterrows():
+                x = x_left if columna_izquierda else x_right
+
+                c.setFont("Helvetica-Bold", 12)
+                c.drawString(x, y, f"Cliente #{reclamo['Nº Cliente']} - {reclamo['Nombre']}")
+                y -= 12
+                c.setFont("Helvetica", 10)
+                c.drawString(x, y, f"📌 {reclamo['Tipo de reclamo']}")
+                y -= 11
+                c.drawString(x, y, f"👷 {reclamo['Técnico']}")
+                y -= 25
+
+                # Alternar entre columnas
+                if not columna_izquierda:
+                    y -= 5  # espacio adicional entre filas
+                columna_izquierda = not columna_izquierda
+
+                # Si se queda sin espacio
+                if y < 80:
+                    c.showPage()
+                    y = height - 40
+                    columna_izquierda = True
+
+            c.save()
+            buffer.seek(0)
+            st.download_button(
+                label="📥 Descargar PDF de reclamos en curso",
+                data=buffer,
+                file_name="reclamos_en_curso_compacto.pdf",
+                mime="application/pdf"
+            )
