@@ -74,7 +74,7 @@ df_reclamos["N° de Precinto"] = df_reclamos["N° de Precinto"].apply(lambda x: 
 tecnicos_disponibles = ["Braian", "Conejo", "Juan", "Junior", "Maxi", "Ramon", "Roque", "Viki", "Oficina", "Base"]
 
 # --- MENÚ DE NAVEGACIÓN ---
-opcion = st.radio("📂 Ir a la sección:", ["Inicio", "Reclamos cargados", "Historial por cliente", "Editar cliente", "Imprimir reclamos", "Seguimiento técnico"], horizontal=True)
+opcion = st.radio("📂 Ir a la sección:", ["Inicio", "Reclamos cargados", "Historial por cliente", "Editar cliente", "Imprimir reclamos", "Seguimiento técnico", "Cierre de Reclamos"], horizontal=True)
 
 # --- SECCIÓN 1: INICIO ---
 if opcion == "Inicio":
@@ -523,3 +523,63 @@ if opcion == "Seguimiento técnico":
                 file_name="reclamos_en_curso_compacto.pdf",
                 mime="application/pdf"
             )
+
+# --- SECCIÓN 7: CIERRE DE RECLAMOS ---
+if opcion == "Cierre de Reclamos":
+    st.subheader("✅ Cierre de reclamos en curso")
+
+    # Aseguramos tipos de datos y limpieza
+    df_reclamos["Nº Cliente"] = df_reclamos["Nº Cliente"].astype(str).str.strip()
+    df_reclamos["Técnico"] = df_reclamos["Técnico"].astype(str).fillna("")
+
+    # Filtrar reclamos "En curso"
+    en_curso = df_reclamos[df_reclamos["Estado"] == "En curso"].copy()
+
+    if en_curso.empty:
+        st.info("📭 No hay reclamos en curso en este momento.")
+    else:
+        # Filtrar por técnico
+        tecnicos_unicos = sorted(set(", ".join(en_curso["Técnico"].tolist()).split(", ")))
+        tecnicos_seleccionados = st.multiselect("👷 Filtrar por técnico asignado", tecnicos_unicos)
+
+        if tecnicos_seleccionados:
+            en_curso = en_curso[
+                en_curso["Técnico"].apply(
+                    lambda t: any(tecnico in t for tecnico in tecnicos_seleccionados)
+                )
+            ]
+
+        # Mostrar tabla
+        st.write("### 📋 Reclamos en curso:")
+        st.dataframe(en_curso[["Fecha y hora", "Nº Cliente", "Nombre", "Tipo de reclamo", "Técnico"]], use_container_width=True)
+
+        # Procesar acciones por reclamo
+        st.markdown("### ✏️ Acciones por reclamo:")
+
+        for i, row in en_curso.iterrows():
+            with st.container():
+                col1, col2, col3 = st.columns([2, 3, 2])
+                with col1:
+                    st.markdown(f"**#{row['Nº Cliente']} - {row['Nombre']}**")
+                    st.markdown(f"📌 {row['Tipo de reclamo']}")
+                    st.markdown(f"👷 {row['Técnico']}")
+                with col2:
+                    if st.button("✅ Marcar como resuelto", key=f"resolver_{i}"):
+                        try:
+                            argentina = pytz.timezone("America/Argentina/Buenos_Aires")
+                            fecha_resolucion = datetime.now(argentina).strftime("%Y-%m-%d %H:%M:%S")
+
+                            sheet_reclamos.update(f"I{i + 2}", "Resuelto")  # Columna estado
+                            sheet_reclamos.update(f"M{i + 2}", fecha_resolucion)  # Columna Fecha de resolución
+
+                            st.success(f"🟢 Reclamo de {row['Nombre']} marcado como RESUELTO.")
+                        except Exception as e:
+                            st.error(f"❌ Error al actualizar: {e}")
+                with col3:
+                    if st.button("↩️ Reenviar a pendiente", key=f"volver_{i}"):
+                        try:
+                            sheet_reclamos.update(f"I{i + 2}", "Pendiente")  # Columna estado
+                            sheet_reclamos.update(f"J{i + 2}", "")  # Técnicos
+                            st.success(f"🔄 Reclamo de {row['Nombre']} vuelto a PENDIENTE y técnicos limpiados.")
+                        except Exception as e:
+                            st.error(f"❌ Error al actualizar: {e}")
