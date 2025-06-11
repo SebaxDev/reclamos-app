@@ -93,7 +93,7 @@ if opcion == "Inicio":
         ]
 
         if not match.empty:
-            cliente_existente = match.squeeze()
+            cliente_existente = match.iloc[0].to_dict()
             st.success("✅ Cliente reconocido, datos auto-cargados.")
         else:
             st.info("ℹ️ Cliente no encontrado. Se cargarán los campos vacíos.")
