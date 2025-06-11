@@ -107,20 +107,23 @@ if opcion == "Inicio":
     if "Nº Cliente" in df_clientes.columns and nro_cliente:
         df_clientes["Nº Cliente"] = df_clientes["Nº Cliente"].astype(str).str.strip()
         df_reclamos["Nº Cliente"] = df_reclamos["Nº Cliente"].astype(str).str.strip()
+
         match = df_clientes[df_clientes["Nº Cliente"] == nro_cliente]
-        reclamos_pendientes = df_reclamos[
+
+        # Bloquear si ya tiene un reclamo pendiente o en curso
+        reclamos_activos = df_reclamos[
             (df_reclamos["Nº Cliente"] == nro_cliente) &
-            (df_reclamos["Estado"] == "Pendiente")
+            (df_reclamos["Estado"].isin(["Pendiente", "En curso"]))
         ]
 
         if not match.empty:
             cliente_existente = match.iloc[0].to_dict()
             st.success("✅ Cliente reconocido, datos auto-cargados.")
         else:
-            st.info("ℹ️ Cliente no encontrado. Se cargarán los campos vacíos.")
+            st.info("ℹ️ Cliente no encontrado. Se cargará como Cliente Nuevo.")
 
-        if not reclamos_pendientes.empty:
-            st.error("⚠️ Este cliente ya tiene un reclamo pendiente. No se puede cargar uno nuevo hasta que se resuelva el anterior.")
+        if not reclamos_activos.empty:
+            st.error("⚠️ Este cliente ya tiene un reclamo sin resolver. No se puede cargar uno nuevo hasta que se cierre el anterior.")
             formulario_bloqueado = True
 
     if not formulario_bloqueado:
@@ -135,7 +138,6 @@ if opcion == "Inicio":
                     nombre = st.text_input("👤 Nombre del Cliente", value=cliente_existente["Nombre"])
                     telefono = st.text_input("📞 Teléfono", value=cliente_existente["Teléfono"])
             else:
-                # Campos vacíos si el cliente no existe
                 with col1:
                     sector = st.text_input("🏩 Sector / Zona", value="")
                     direccion = st.text_input("📍 Dirección", value="")
@@ -144,15 +146,15 @@ if opcion == "Inicio":
                     telefono = st.text_input("📞 Teléfono", value="")
 
             tipo_reclamo = st.selectbox("📌 Tipo de Reclamo", [
-                "Reclamo", "Conexion C+I", "Conexion Cable", "Conexion Internet", "Suma Internet",
+                "Conexion C+I", "Conexion Cable", "Conexion Internet", "Suma Internet",
                 "Suma Cable", "Reconexion", "Sin Señal Ambos", "Sin Señal Cable",
                 "Sin Señal Internet", "Sintonia", "Interferencia", "Traslado",
                 "Extension x2", "Extension x3", "Extension x4", "Cambio de Ficha",
-                "Cambio de Equipo", "Desconexion a Pedido"
+                "Cambio de Equipo", "Reclamo", "Desconexion a Pedido"
             ])
 
             detalles = st.text_area("📝 Detalles del Reclamo")
-            precinto = st.text_input("🔒 N° de Precinto (opcional)", value=cliente_existente.get("N° de Precinto", "") if cliente_existente else "")
+            precinto = st.text_input("🔒 N° de Precinto (opcional)", value=cliente_existente.get("N° de Precinto", "").strip() if cliente_existente else "")
             atendido_por = st.text_input("👤 Atendido por")
 
             enviado = st.form_submit_button("✅ Guardar Reclamo")
@@ -160,6 +162,8 @@ if opcion == "Inicio":
         if enviado:
             if not nro_cliente:
                 st.error("⚠️ Debes ingresar un número de cliente.")
+            elif not atendido_por.strip():
+                st.error("⚠️ El campo 'Atendido por' es obligatorio.")
             else:
                 argentina = pytz.timezone("America/Argentina/Buenos_Aires")
                 fecha_hora = datetime.now(argentina).strftime("%Y-%m-%d %H:%M:%S")
@@ -173,7 +177,7 @@ if opcion == "Inicio":
                     telefono,
                     tipo_reclamo,
                     detalles.upper(),
-                    "Pendiente",  # Estado por defecto
+                    "Pendiente",  # Estado fijo
                     "",           # Técnicos vacíos por defecto
                     precinto,
                     atendido_por.upper()
