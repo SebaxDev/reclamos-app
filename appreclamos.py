@@ -79,13 +79,17 @@ st.title("📋 Fusion Reclamos App")
 # --- METRICAS RESUMEN ---
 try:
     df_metricas = df_reclamos.copy()
-    total = len(df_metricas)
-    pendientes = len(df_metricas[df_metricas["Estado"] == "Pendiente"])
-    resueltos = len(df_metricas[df_metricas["Estado"] == "Resuelto"])
-    en_curso = len(df_metricas[df_metricas["Estado"] == "En curso"])
+
+    # Solo reclamos activos (Pendientes o En curso)
+    df_activos = df_metricas[df_metricas["Estado"].isin(["Pendiente", "En curso"])]
+
+    total = len(df_activos)  # Solo activos
+    pendientes = len(df_activos[df_activos["Estado"] == "Pendiente"])
+    en_curso = len(df_activos[df_activos["Estado"] == "En curso"])
+    resueltos = len(df_metricas[df_metricas["Estado"] == "Resuelto"])  # Se sigue mostrando aparte
 
     colm1, colm2, colm3, colm4 = st.columns(4)
-    colm1.metric("📄 Total", total)
+    colm1.metric("📄 Total activos", total)
     colm2.metric("🕒 Pendientes", pendientes)
     colm3.metric("🔧 En curso", en_curso)
     colm4.metric("✅ Resueltos", resueltos)
@@ -204,6 +208,7 @@ if opcion == "Inicio":
 # --- SECCIÓN 2: RECLAMOS CARGADOS ---
 if opcion == "Reclamos cargados":
     st.subheader("📊 Reclamos cargados")
+
     try:
         df = df_reclamos.copy()
         df["Nº Cliente"] = df["Nº Cliente"].astype(str).str.strip()
@@ -212,6 +217,29 @@ if opcion == "Reclamos cargados":
         df["Fecha y hora"] = pd.to_datetime(df["Fecha y hora"], errors="coerce")
         df = df.sort_values("Fecha y hora", ascending=False)
 
+        # --- NUEVO PANEL VISUAL ---
+        st.markdown("### 🧾 Distribución por tipo de reclamo (solo activos)")
+
+        df_activos = df[df["Estado"].isin(["Pendiente", "En curso"])].copy()
+        conteo_por_tipo = df_activos["Tipo de reclamo"].value_counts().sort_index()
+
+        tipos = list(conteo_por_tipo.index)
+        cantidad = list(conteo_por_tipo.values)
+
+        columnas = st.columns(4)  # cambia a 3 si querés que sea más ancho
+
+        for i, (tipo, cant) in enumerate(zip(tipos, cantidad)):
+            with columnas[i % 4]:
+                st.metric(label=f"📌 {tipo}", value=f"{cant}")
+
+        # Total final
+        st.markdown("---")
+        total_activos = len(df_activos)
+        st.metric(label="📊 TOTAL DE RECLAMOS ACTIVOS", value=total_activos)
+
+        st.divider()
+
+        # --- FILTROS Y EDITOR DE DATOS ---
         col1, col2, col3 = st.columns(3)
         with col1:
             filtro_estado = st.selectbox("🔎 Filtrar por estado", ["Todos"] + sorted(df["Estado"].unique()))
@@ -241,18 +269,15 @@ if opcion == "Reclamos cargados":
 
         if st.button("💾 Guardar cambios en Google Sheets"):
             try:
-                # Convertir técnico (list) a string si corresponde
                 if isinstance(edited_df.iloc[0]["Técnico"], list):
                     edited_df["Técnico"] = edited_df["Técnico"].apply(lambda lista: ", ".join(lista) if isinstance(lista, list) else lista)
 
                 edited_df = edited_df.astype(str)
 
-                # Guardar en hoja de reclamos
                 sheet_reclamos.clear()
                 sheet_reclamos.append_row(edited_df.columns.tolist())
                 sheet_reclamos.append_rows(edited_df.values.tolist())
 
-                # Actualizar precintos en hoja de clientes
                 precinto_dict = edited_df.set_index("Nº Cliente")["N° de Precinto"].to_dict()
                 for i, row in df_clientes.iterrows():
                     cliente_id = row["Nº Cliente"]
