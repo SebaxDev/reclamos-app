@@ -445,7 +445,7 @@ if opcion == "Imprimir reclamos":
         st.error(f"❌ Error al generar PDF: {e}")
 
 # --- SECCIÓN 6: SEGUIMIENTO TÉCNICO ---
-import time  # Import necesario para agregar el retraso
+import time  # Asegurate de tener esta línea al inicio del archivo si no estaba
 
 if opcion == "Seguimiento técnico":
     st.subheader("👷 Seguimiento técnico del reclamo")
@@ -483,17 +483,29 @@ if opcion == "Seguimiento técnico":
                     index=["Pendiente", "En curso", "Resuelto"].index(reclamo_actual["Estado"])
                 )
 
-                tecnicos_actuales = [t.strip() for t in reclamo_actual.get("Técnico", "").split(",") if t.strip()]
-                nuevos_tecnicos = st.multiselect("👷 Técnicos asignados", tecnicos_disponibles, default=tecnicos_actuales)
+                # Preparar técnicos actuales y filtrarlos por disponibles
+                tecnicos_actuales = [t.strip() for t in str(reclamo_actual.get("Técnico", "")).split(",") if t.strip()]
+                tecnicos_actuales_filtrados = [
+                    t for t in tecnicos_disponibles if t.lower() in [x.lower() for x in tecnicos_actuales]
+                ]
+
+                nuevos_tecnicos = st.multiselect(
+                    "👷 Técnicos asignados",
+                    tecnicos_disponibles,
+                    default=tecnicos_actuales_filtrados
+                )
 
                 if st.button("💾 Actualizar reclamo"):
-                    try:
-                        sheet_reclamos.update(f"I{index_reclamo}", [[nuevo_estado]])
-                        time.sleep(0.5)  # Espera para evitar límite de API
-                        sheet_reclamos.update(f"J{index_reclamo}", [[", ".join(nuevos_tecnicos).upper()]])
-                        st.success("✅ Reclamo actualizado correctamente.")
-                    except Exception as e:
-                        st.error(f"❌ Error al actualizar: {e}")
+                    if not nuevos_tecnicos:
+                        st.warning("⚠️ Debes asignar al menos un técnico para actualizar el reclamo.")
+                    else:
+                        try:
+                            sheet_reclamos.update(f"I{index_reclamo}", [[nuevo_estado]])
+                            time.sleep(0.5)
+                            sheet_reclamos.update(f"J{index_reclamo}", [[", ".join(nuevos_tecnicos).upper()]])
+                            st.success("✅ Reclamo actualizado correctamente.")
+                        except Exception as e:
+                            st.error(f"❌ Error al actualizar: {e}")
 
     # --- IMPRIMIR RECLAMOS EN CURSO ---
     st.markdown("---")
