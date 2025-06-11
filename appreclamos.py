@@ -87,10 +87,17 @@ if opcion == "Inicio":
         df_clientes["Nº Cliente"] = df_clientes["Nº Cliente"].astype(str).str.strip()
         df_reclamos["Nº Cliente"] = df_reclamos["Nº Cliente"].astype(str).str.strip()
         match = df_clientes[df_clientes["Nº Cliente"] == nro_cliente]
-        reclamos_pendientes = df_reclamos[(df_reclamos["Nº Cliente"] == nro_cliente) & (df_reclamos["Estado"] == "Pendiente")]
+        reclamos_pendientes = df_reclamos[
+            (df_reclamos["Nº Cliente"] == nro_cliente) &
+            (df_reclamos["Estado"] == "Pendiente")
+        ]
+
         if not match.empty:
             cliente_existente = match.squeeze()
             st.success("✅ Cliente reconocido, datos auto-cargados.")
+        else:
+            st.info("ℹ️ Cliente no encontrado. Se cargarán los campos vacíos.")
+
         if not reclamos_pendientes.empty:
             st.error("⚠️ Este cliente ya tiene un reclamo pendiente. No se puede cargar uno nuevo hasta que se resuelva el anterior.")
             formulario_bloqueado = True
@@ -98,6 +105,7 @@ if opcion == "Inicio":
     if not formulario_bloqueado:
         with st.form("reclamo_formulario"):
             col1, col2 = st.columns(2)
+
             if cliente_existente is not None:
                 with col1:
                     sector = st.text_input("🏩 Sector / Zona", value=cliente_existente["Sector"])
@@ -106,25 +114,26 @@ if opcion == "Inicio":
                     nombre = st.text_input("👤 Nombre del Cliente", value=cliente_existente["Nombre"])
                     telefono = st.text_input("📞 Teléfono", value=cliente_existente["Teléfono"])
             else:
+                # Campos vacíos si el cliente no existe
                 with col1:
-                    sector = st.text_input("🏩 Sector / Zona")
-                    direccion = st.text_input("📍 Dirección")
+                    sector = st.text_input("🏩 Sector / Zona", value="")
+                    direccion = st.text_input("📍 Dirección", value="")
                 with col2:
-                    nombre = st.text_input("👤 Nombre del Cliente")
-                    telefono = st.text_input("📞 Teléfono")
+                    nombre = st.text_input("👤 Nombre del Cliente", value="")
+                    telefono = st.text_input("📞 Teléfono", value="")
 
             tipo_reclamo = st.selectbox("📌 Tipo de Reclamo", [
-                "Conexion C+I", "Conexion Cable", "Conexion Internet", "Suma Internet",
+                "Reclamo", "Conexion C+I", "Conexion Cable", "Conexion Internet", "Suma Internet",
                 "Suma Cable", "Reconexion", "Sin Señal Ambos", "Sin Señal Cable",
                 "Sin Señal Internet", "Sintonia", "Interferencia", "Traslado",
                 "Extension x2", "Extension x3", "Extension x4", "Cambio de Ficha",
-                "Cambio de Equipo", "Reclamo", "Desconexion a Pedido"])
+                "Cambio de Equipo", "Desconexion a Pedido"
+            ])
 
             detalles = st.text_area("📝 Detalles del Reclamo")
-            estado = st.selectbox("⚙️ Estado del Reclamo", ["Pendiente", "En curso", "Resuelto"], index=0)
-            tecnico_seleccionado = st.multiselect("👷 Técnico asignado (puede dejarse vacío o elegir múltiples)", tecnicos_disponibles)
-            precinto = st.text_input("🔒 N° de Precinto (opcional)", value=cliente_existente.get("N° de Precinto", "") if cliente_existente is not None else "")
+            precinto = st.text_input("🔒 N° de Precinto (opcional)", value=cliente_existente.get("N° de Precinto", "") if cliente_existente else "")
             atendido_por = st.text_input("👤 Atendido por")
+
             enviado = st.form_submit_button("✅ Guardar Reclamo")
 
         if enviado:
@@ -133,9 +142,7 @@ if opcion == "Inicio":
             else:
                 argentina = pytz.timezone("America/Argentina/Buenos_Aires")
                 fecha_hora = datetime.now(argentina).strftime("%Y-%m-%d %H:%M:%S")
-                tecnico_str = ", ".join(tecnico_seleccionado)
 
-                # Crear la fila del reclamo, convirtiendo campos seleccionados a mayúsculas
                 fila_reclamo = [
                     fecha_hora,
                     nro_cliente,
@@ -145,8 +152,8 @@ if opcion == "Inicio":
                     telefono,
                     tipo_reclamo,
                     detalles.upper(),
-                    estado,
-                    tecnico_str,
+                    "Pendiente",  # Estado por defecto
+                    "",           # Técnicos vacíos por defecto
                     precinto,
                     atendido_por.upper()
                 ]
