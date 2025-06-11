@@ -445,53 +445,55 @@ if opcion == "Imprimir reclamos":
         st.error(f"❌ Error al generar PDF: {e}")
 
 # --- SECCIÓN 6: SEGUIMIENTO TÉCNICO ---
+import time  # Import necesario para agregar el retraso
+
 if opcion == "Seguimiento técnico":
-    st.subheader("👷 Seguimiento técnico por lote")
+    st.subheader("👷 Seguimiento técnico del reclamo")
+    cliente_input = st.text_input("🔍 Ingresá el N° de Cliente para actualizar su reclamo").strip()
 
-    # Cargar solo reclamos pendientes o en curso
-    df_reclamos["Nº Cliente"] = df_reclamos["Nº Cliente"].astype(str).str.strip()
-    activos = df_reclamos[df_reclamos["Estado"].isin(["Pendiente", "En curso"])].copy()
+    if cliente_input:
+        df_reclamos["Nº Cliente"] = df_reclamos["Nº Cliente"].astype(str).str.strip()
+        df_filtrado = df_reclamos[
+            (df_reclamos["Nº Cliente"] == cliente_input) &
+            (df_reclamos["Estado"].isin(["Pendiente", "En curso"]))
+        ]
 
-    if activos.empty:
-        st.info("📭 No hay reclamos pendientes ni en curso.")
-    else:
-        # Filtrar por técnico asignado
-        tecnicos_disponibles = ["Braian", "Conejo", "Juan", "Junior", "Maxi", "Ramon", "Roque", "Viki", "Oficina", "Base"]
-        tecnicos_unicos = sorted(set(", ".join(activos["Técnico"].dropna().astype(str)).split(", ")))
-        filtro_tecnicos = st.multiselect("👷 Filtrar por técnico asignado", tecnicos_unicos)
+        if df_filtrado.empty:
+            st.warning("❕ Este cliente no tiene reclamos pendientes o en curso.")
+        else:
+            df_filtrado["Fecha y hora"] = pd.to_datetime(df_filtrado["Fecha y hora"], errors="coerce")
+            df_filtrado = df_filtrado.dropna(subset=["Fecha y hora"])
 
-        if filtro_tecnicos:
-            activos = activos[
-                activos["Técnico"].apply(lambda t: any(tecnico in str(t) for tecnico in filtro_tecnicos))
-            ]
+            if df_filtrado.empty:
+                st.warning("❕ Este cliente tiene reclamos sin fecha válida. No se puede determinar el más reciente.")
+            else:
+                df_ordenado = df_filtrado.sort_values("Fecha y hora", ascending=False)
+                reclamo_actual = df_ordenado.iloc[0]
+                index_reclamo = df_ordenado.index[0] + 2  # +2 por encabezado y base 1 en Google Sheets
 
-        # Mostrar editor
-        st.markdown("### ✏️ Editá estado y técnicos:")
-        editor = st.data_editor(
-            activos,
-            use_container_width=True,
-            num_rows="dynamic",
-            key="editor_tecnico",
-            column_config={
-                "Estado": st.column_config.SelectboxColumn("Estado", options=["Pendiente", "En curso", "Resuelto"]),
-                "Técnico": st.column_config.TextColumn("Técnico asignado")
-            },
-            disabled=["Fecha y hora", "Nº Cliente", "Nombre", "Tipo de reclamo", "Detalles", "Dirección", "Teléfono", "N° de Precinto", "Atendido por", "Fecha de resolución", "Sector"]
-        )
+                st.info(f"📅 Reclamo registrado el {reclamo_actual['Fecha y hora']}")
+                st.write(f"📌 Tipo: **{reclamo_actual['Tipo de reclamo']}**")
+                st.write(f"📍 Dirección: {reclamo_actual['Dirección']}")
+                st.write(f"🔒 Precinto: {reclamo_actual.get('N° de Precinto', '')}")
+                st.write(f"📄 Detalles: {reclamo_actual['Detalles']}")
 
-        if st.button("💾 Guardar actualizaciones técnicas"):
-            try:
-                # Convertir a string todo
-                editor = editor.astype(str)
+                nuevo_estado = st.selectbox(
+                    "⚙️ Cambiar estado",
+                    ["Pendiente", "En curso", "Resuelto"],
+                    index=["Pendiente", "En curso", "Resuelto"].index(reclamo_actual["Estado"])
+                )
 
-                # Borrar hoja y volver a escribir
-                sheet_reclamos.clear()
-                sheet_reclamos.append_row(editor.columns.tolist())
-                sheet_reclamos.append_rows(editor.values.tolist())
+                tecnicos_actuales = [t.strip() for t in reclamo_actual.get("Técnico", "").split(",") if t.strip()]
+                nuevos_tecnicos = st.multiselect("👷 Técnicos asignados", tecnicos_disponibles, default=tecnicos_actuales)
 
-                st.success("✅ Cambios técnicos actualizados correctamente.")
-            except Exception as e:
-                st.error(f"❌ Error al guardar los cambios: {e}")
+                if st.button("💾 Actualizar reclamo"):
+                    try:
+                        sheet_reclamos.update(f"I{index_reclamo}", [[nuevo_estado]])
+                        time.sleep(0.5)  # Espera para evitar límite de API
+                        sheet_reclamos.update(f"J{index_reclamo}", [[", ".join(nuevos_tecnicos).upper()]])
+                        st.success("✅ Reclamo actualizado correctamente.")
+                    except Exception as e:
+                        st.error(f"❌ Error al actualizar: {e}")
 
     # --- IMPRIMIR RECLAMOS EN CURSO ---
     st.markdown("---")
