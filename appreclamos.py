@@ -420,20 +420,18 @@ if opcion == "Seguimiento técnico":
     if cliente_input:
         df_reclamos["Nº Cliente"] = df_reclamos["Nº Cliente"].astype(str).str.strip()
         df_filtrado = df_reclamos[
-            (df_reclamos["Nº Cliente"] == cliente_input) & 
+            (df_reclamos["Nº Cliente"] == cliente_input) &
             (df_reclamos["Estado"].isin(["Pendiente", "En curso"]))
         ]
 
         if df_filtrado.empty:
             st.warning("❕ Este cliente no tiene reclamos pendientes o en curso.")
         else:
-            # Tomar el más reciente (por fecha)
+            # Tomar el reclamo más reciente por fecha
             df_filtrado["Fecha y hora"] = pd.to_datetime(df_filtrado["Fecha y hora"], errors="coerce")
-            reclamo_actual = df_filtrado.sort_values("Fecha y hora", ascending=False).iloc[0]
-            index_reclamo = df_reclamos[
-                (df_reclamos["Nº Cliente"] == reclamo_actual["Nº Cliente"]) &
-                (df_reclamos["Fecha y hora"] == reclamo_actual["Fecha y hora"])
-            ].index[0] + 2  # +2 por encabezado y base 1 en Sheets
+            df_ordenado = df_filtrado.sort_values("Fecha y hora", ascending=False)
+            reclamo_actual = df_ordenado.iloc[0]
+            index_reclamo = df_ordenado.index[0] + 2  # +2 por encabezado y base 1 en Google Sheets
 
             st.info(f"📅 Reclamo registrado el {reclamo_actual['Fecha y hora']}")
             st.write(f"📌 Tipo: **{reclamo_actual['Tipo de reclamo']}**")
@@ -441,14 +439,20 @@ if opcion == "Seguimiento técnico":
             st.write(f"🔒 Precinto: {reclamo_actual.get('N° de Precinto', '')}")
             st.write(f"📄 Detalles: {reclamo_actual['Detalles']}")
 
-            nuevo_estado = st.selectbox("⚙️ Cambiar estado", ["Pendiente", "En curso", "Resuelto"], index=["Pendiente", "En curso", "Resuelto"].index(reclamo_actual["Estado"]))
-            nuevos_tecnicos = st.multiselect("👷 Técnicos asignados", tecnicos_disponibles, default=[t.strip() for t in reclamo_actual["Técnico"].split(",") if t.strip()])
+            nuevo_estado = st.selectbox(
+                "⚙️ Cambiar estado",
+                ["Pendiente", "En curso", "Resuelto"],
+                index=["Pendiente", "En curso", "Resuelto"].index(reclamo_actual["Estado"])
+            )
+
+            tecnicos_actuales = [t.strip() for t in reclamo_actual.get("Técnico", "").split(",") if t.strip()]
+            nuevos_tecnicos = st.multiselect("👷 Técnicos asignados", tecnicos_disponibles, default=tecnicos_actuales)
 
             if st.button("💾 Actualizar reclamo"):
                 try:
-                    hoja = sheet_reclamos
-                    hoja.update(f"I{index_reclamo}", nuevo_estado)
-                    hoja.update(f"J{index_reclamo}", ", ".join(nuevos_tecnicos).upper())
+                    sheet_reclamos.update(f"I{index_reclamo}", nuevo_estado)
+                    sheet_reclamos.update(f"J{index_reclamo}", ", ".join(nuevos_tecnicos).upper())
                     st.success("✅ Reclamo actualizado correctamente.")
                 except Exception as e:
                     st.error(f"❌ Error al actualizar: {e}")
+
