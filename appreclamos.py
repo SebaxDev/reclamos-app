@@ -427,32 +427,36 @@ if opcion == "Seguimiento técnico":
         if df_filtrado.empty:
             st.warning("❕ Este cliente no tiene reclamos pendientes o en curso.")
         else:
-            # Tomar el reclamo más reciente por fecha
+            # Convertir a fecha y eliminar filas con fechas inválidas
             df_filtrado["Fecha y hora"] = pd.to_datetime(df_filtrado["Fecha y hora"], errors="coerce")
-            df_ordenado = df_filtrado.sort_values("Fecha y hora", ascending=False)
-            reclamo_actual = df_ordenado.iloc[0]
-            index_reclamo = df_ordenado.index[0] + 2  # +2 por encabezado y base 1 en Google Sheets
+            df_filtrado = df_filtrado.dropna(subset=["Fecha y hora"])
 
-            st.info(f"📅 Reclamo registrado el {reclamo_actual['Fecha y hora']}")
-            st.write(f"📌 Tipo: **{reclamo_actual['Tipo de reclamo']}**")
-            st.write(f"📍 Dirección: {reclamo_actual['Dirección']}")
-            st.write(f"🔒 Precinto: {reclamo_actual.get('N° de Precinto', '')}")
-            st.write(f"📄 Detalles: {reclamo_actual['Detalles']}")
+            if df_filtrado.empty:
+                st.warning("❕ Este cliente tiene reclamos sin fecha válida. No se puede determinar el más reciente.")
+            else:
+                df_ordenado = df_filtrado.sort_values("Fecha y hora", ascending=False)
+                reclamo_actual = df_ordenado.iloc[0]
+                index_reclamo = df_ordenado.index[0] + 2  # +2 por encabezado y base 1 en Google Sheets
 
-            nuevo_estado = st.selectbox(
-                "⚙️ Cambiar estado",
-                ["Pendiente", "En curso", "Resuelto"],
-                index=["Pendiente", "En curso", "Resuelto"].index(reclamo_actual["Estado"])
-            )
+                st.info(f"📅 Reclamo registrado el {reclamo_actual['Fecha y hora']}")
+                st.write(f"📌 Tipo: **{reclamo_actual['Tipo de reclamo']}**")
+                st.write(f"📍 Dirección: {reclamo_actual['Dirección']}")
+                st.write(f"🔒 Precinto: {reclamo_actual.get('N° de Precinto', '')}")
+                st.write(f"📄 Detalles: {reclamo_actual['Detalles']}")
 
-            tecnicos_actuales = [t.strip() for t in reclamo_actual.get("Técnico", "").split(",") if t.strip()]
-            nuevos_tecnicos = st.multiselect("👷 Técnicos asignados", tecnicos_disponibles, default=tecnicos_actuales)
+                nuevo_estado = st.selectbox(
+                    "⚙️ Cambiar estado",
+                    ["Pendiente", "En curso", "Resuelto"],
+                    index=["Pendiente", "En curso", "Resuelto"].index(reclamo_actual["Estado"])
+                )
 
-            if st.button("💾 Actualizar reclamo"):
-                try:
-                    sheet_reclamos.update(f"I{index_reclamo}", nuevo_estado)
-                    sheet_reclamos.update(f"J{index_reclamo}", ", ".join(nuevos_tecnicos).upper())
-                    st.success("✅ Reclamo actualizado correctamente.")
-                except Exception as e:
-                    st.error(f"❌ Error al actualizar: {e}")
+                tecnicos_actuales = [t.strip() for t in reclamo_actual.get("Técnico", "").split(",") if t.strip()]
+                nuevos_tecnicos = st.multiselect("👷 Técnicos asignados", tecnicos_disponibles, default=tecnicos_actuales)
 
+                if st.button("💾 Actualizar reclamo"):
+                    try:
+                        sheet_reclamos.update(f"I{index_reclamo}", nuevo_estado)
+                        sheet_reclamos.update(f"J{index_reclamo}", ", ".join(nuevos_tecnicos).upper())
+                        st.success("✅ Reclamo actualizado correctamente.")
+                    except Exception as e:
+                        st.error(f"❌ Error al actualizar: {e}")
