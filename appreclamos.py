@@ -469,7 +469,7 @@ if opcion == "Seguimiento técnico":
             else:
                 df_ordenado = df_filtrado.sort_values("Fecha y hora", ascending=False)
                 reclamo_actual = df_ordenado.iloc[0]
-                index_reclamo = df_ordenado.index[0] + 2  # +2 por encabezado y base 1 en Google Sheets
+                index_reclamo = df_ordenado.index[0] + 2  # +2 por encabezado y base 1 en Sheets
 
                 st.info(f"📅 Reclamo registrado el {reclamo_actual['Fecha y hora']}")
                 st.write(f"📌 Tipo: **{reclamo_actual['Tipo de reclamo']}**")
@@ -483,7 +483,6 @@ if opcion == "Seguimiento técnico":
                     index=["Pendiente", "En curso", "Resuelto"].index(reclamo_actual["Estado"])
                 )
 
-                # Preparar técnicos actuales y filtrarlos por disponibles
                 tecnicos_actuales = [t.strip() for t in str(reclamo_actual.get("Técnico", "")).split(",") if t.strip()]
                 tecnicos_actuales_filtrados = [
                     t for t in tecnicos_disponibles if t.lower() in [x.lower() for x in tecnicos_actuales]
@@ -500,16 +499,18 @@ if opcion == "Seguimiento técnico":
                         st.warning("⚠️ Debes asignar al menos un técnico para actualizar el reclamo.")
                     else:
                         try:
-                            sheet_reclamos.update(f"I{index_reclamo}", [[nuevo_estado]])
-                            time.sleep(0.5)
-                            sheet_reclamos.update(f"J{index_reclamo}", [[", ".join(nuevos_tecnicos).upper()]])
+                            sheet_reclamos.batch_update([
+                                {"range": f"I{index_reclamo}", "values": [[nuevo_estado]]},
+                                {"range": f"J{index_reclamo}", "values": [[", ".join(nuevos_tecnicos).upper()]]}
+                            ])
+                            time.sleep(1)  # prevenir bloqueo de la API por llamadas seguidas
                             st.success("✅ Reclamo actualizado correctamente.")
                         except Exception as e:
                             st.error(f"❌ Error al actualizar: {e}")
 
-    # --- IMPRIMIR RECLAMOS EN CURSO ---
+    # --- IMPRIMIR RECLAMOS EN CURSO (OPTIMIZADO) ---
     st.markdown("---")
-    st.markdown("### 🖨️ Imprimir reclamos 'En curso' (vista compacta)")
+    st.markdown("### 🖨️ Imprimir reclamos 'En curso' (vista compacta optimizada)")
 
     reclamos_en_curso = df_reclamos[
         (df_reclamos["Estado"] == "En curso")
@@ -522,13 +523,12 @@ if opcion == "Seguimiento técnico":
         reclamos_en_curso = reclamos_en_curso.dropna(subset=["Fecha y hora"])
         reclamos_en_curso = reclamos_en_curso.sort_values("Fecha y hora", ascending=False)
 
-        # Mostrar en pantalla
         st.dataframe(
             reclamos_en_curso[["Nº Cliente", "Nombre", "Tipo de reclamo", "Técnico"]],
             use_container_width=True
         )
 
-        if st.button("📄 Generar PDF de reclamos en curso"):
+        if st.button("📄 Generar PDF de reclamos en curso (más por hoja)"):
             buffer = io.BytesIO()
             c = canvas.Canvas(buffer, pagesize=A4)
             width, height = A4
@@ -541,22 +541,21 @@ if opcion == "Seguimiento técnico":
             for idx, reclamo in reclamos_en_curso.iterrows():
                 x = x_left if columna_izquierda else x_right
 
-                c.setFont("Helvetica-Bold", 12)
-                c.drawString(x, y, f"Cliente #{reclamo['Nº Cliente']} - {reclamo['Nombre']}")
-                y -= 12
-                c.setFont("Helvetica", 10)
+                # Fuente más chica
+                c.setFont("Helvetica-Bold", 10)
+                c.drawString(x, y, f"{reclamo['Nº Cliente']} - {reclamo['Nombre']}")
+                y -= 10
+                c.setFont("Helvetica", 8)
                 c.drawString(x, y, f"📌 {reclamo['Tipo de reclamo']}")
-                y -= 11
+                y -= 9
                 c.drawString(x, y, f"👷 {reclamo['Técnico']}")
-                y -= 25
+                y -= 20  # Menos espacio entre bloques
 
-                # Alternar entre columnas
                 if not columna_izquierda:
-                    y -= 5  # espacio adicional entre filas
+                    y -= 3
                 columna_izquierda = not columna_izquierda
 
-                # Si se queda sin espacio
-                if y < 80:
+                if y < 60:
                     c.showPage()
                     y = height - 40
                     columna_izquierda = True
@@ -564,9 +563,9 @@ if opcion == "Seguimiento técnico":
             c.save()
             buffer.seek(0)
             st.download_button(
-                label="📥 Descargar PDF de reclamos en curso",
+                label="📥 Descargar PDF optimizado",
                 data=buffer,
-                file_name="reclamos_en_curso_compacto.pdf",
+                file_name="reclamos_en_curso_opt.pdf",
                 mime="application/pdf"
             )
 
