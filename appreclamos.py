@@ -662,21 +662,34 @@ if opcion == "Cierre de Reclamos":
                     st.markdown(f"**#{row['Nº Cliente']} - {row['Nombre']}**")
                     st.markdown(f"📌 {row['Tipo de reclamo']}")
                     st.markdown(f"👷 {row['Técnico']}")
+
+                    # Mostrar campo de precinto editable
+                    cliente_id = str(row["Nº Cliente"]).strip()
+                    cliente_info = df_clientes[df_clientes["Nº Cliente"] == cliente_id]
+                    precinto_actual = cliente_info["N° de Precinto"].values[0] if not cliente_info.empty else ""
+                    nuevo_precinto = st.text_input("🔒 Precinto", value=precinto_actual, key=f"precinto_{i}")
+
                 with col2:
                     if st.button("✅ Resuelto", key=f"resolver_{i}"):
                         try:
                             argentina = pytz.timezone("America/Argentina/Buenos_Aires")
                             fecha_resolucion = datetime.now(argentina).strftime("%Y-%m-%d %H:%M:%S")
 
-                            # Usamos batch_update para eficiencia
+                            # Actualizar estado y fecha de resolución en la hoja de reclamos
                             sheet_reclamos.batch_update([
                                 {"range": f"I{i + 2}", "values": [["Resuelto"]]},
                                 {"range": f"M{i + 2}", "values": [[fecha_resolucion]]}
                             ])
 
-                            st.success(f"🟢 Reclamo de {row['Nombre']} marcado como RESUELTO.")
+                            # Si se ingresó un precinto, actualizarlo en hoja Clientes
+                            if nuevo_precinto.strip():
+                                if not cliente_info.empty:
+                                    index_real = cliente_info.index[0] + 2
+                                    sheet_clientes.update(f"F{index_real}", [[nuevo_precinto.strip()]])
+                            st.success(f"🟢 Reclamo de {row['Nombre']} cerrado correctamente.")
                         except Exception as e:
                             st.error(f"❌ Error al actualizar: {e}")
+
                 with col3:
                     if st.button("↩️ Pendiente", key=f"volver_{i}"):
                         try:
