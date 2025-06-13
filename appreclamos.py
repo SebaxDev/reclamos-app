@@ -345,6 +345,40 @@ if opcion == "Editar cliente":
         else:
             st.warning("⚠️ Cliente no encontrado.")
 
+    # --- NUEVO FORMULARIO PARA CARGAR CLIENTE DESDE CERO ---
+    st.markdown("---")
+    st.subheader("🆕 Cargar nuevo cliente")
+
+    with st.form("form_nuevo_cliente"):
+        nuevo_nro = st.text_input("🔢 N° de Cliente (nuevo)").strip()
+        nuevo_sector = st.text_input("🏙️ Sector")
+        nuevo_nombre = st.text_input("👤 Nombre")
+        nueva_direccion = st.text_input("📍 Dirección")
+        nuevo_telefono = st.text_input("📞 Teléfono")
+        nuevo_precinto = st.text_input("🔒 N° de Precinto (opcional)")
+
+        guardar_cliente = st.form_submit_button("💾 Guardar nuevo cliente")
+
+        if guardar_cliente:
+            if not nuevo_nro or not nuevo_nombre:
+                st.error("⚠️ Debés ingresar al menos el N° de cliente y el nombre.")
+            elif nuevo_nro in df_clientes["Nº Cliente"].values:
+                st.warning("⚠️ Este cliente ya existe.")
+            else:
+                try:
+                    nueva_fila = [
+                        nuevo_nro,
+                        nuevo_sector.upper(),
+                        nuevo_nombre.upper(),
+                        nueva_direccion.upper(),
+                        nuevo_telefono,
+                        nuevo_precinto
+                    ]
+                    sheet_clientes.append_row(nueva_fila)
+                    st.success("✅ Nuevo cliente agregado correctamente.")
+                except Exception as e:
+                    st.error(f"❌ Error al guardar: {e}")
+
 # --- SECCIÓN 5: IMPRESIÓN ---
 if opcion == "Imprimir reclamos":
     st.subheader("🖨️ Seleccionar reclamos para imprimir (formato técnico compacto)")
