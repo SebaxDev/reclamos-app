@@ -119,7 +119,7 @@ if not st.session_state.logueado:
                 cur = conn.cursor()
                 cur.execute(
                     "SELECT * FROM usuarios WHERE username = %s AND password = %s",
-                    (usuario, password)
+                    (usuario, password))
                 if cur.fetchone():
                     st.session_state.logueado = True
                     st.session_state.usuario_actual = usuario
