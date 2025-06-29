@@ -26,6 +26,47 @@ def keep_alive():
 if 'RENDER' in os.environ:
     threading.Thread(target=keep_alive, daemon=True).start()
 
+# --- INICIALIZACIÓN DE EMERGENCIA --- (Añade esto)
+def create_tables_manually():
+    try:
+        conn = psycopg2.connect(
+            host=os.getenv('DB_HOST'),
+            database=os.getenv('DB_NAME'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD'),
+            port=os.getenv('DB_PORT'),
+            sslmode='require'
+        )
+        cur = conn.cursor()
+        
+        # Tabla usuarios
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS usuarios (
+                username VARCHAR(50) PRIMARY KEY,
+                password VARCHAR(100) NOT NULL
+            )
+        """)
+        
+        # Insertar usuario admin
+        cur.execute("""
+            INSERT INTO usuarios (username, password)
+            VALUES ('Sebax', 'Fusionx2025')
+            ON CONFLICT (username) DO NOTHING
+        """)
+        
+        conn.commit()
+        st.success("Tablas creadas exitosamente (modo emergencia)")
+    except Exception as e:
+        st.error(f"Error crítico al crear tablas: {e}")
+        st.stop()  # Detiene la aplicación si no puede crear las tablas
+    finally:
+        if conn:
+            conn.close()
+
+# Ejecutar la inicialización de emergencia ANTES de todo
+if os.getenv('DB_HOST'):  # Solo si hay configuración de DB
+    create_tables_manually()
+
 # --- CONEXIÓN A NEON.POSTGRESQL ---
 @st.cache_resource
 def get_db_connection():
