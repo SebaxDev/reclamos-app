@@ -26,81 +26,140 @@ def keep_alive():
 if 'RENDER' in os.environ:
     threading.Thread(target=keep_alive, daemon=True).start()
 
-# --- CONEXIÓN A NEON.POSTGRESQL ---
-@st.cache_resource
+# --- CONEXIÓN MEJORADA A NEON.POSTGRESQL ---
+@st.cache_resource(ttl=3600, show_spinner="Conectando a la base de datos...")
 def get_db_connection():
-    return psycopg2.connect(
-        host=os.getenv('DB_HOST'),
-        database=os.getenv('DB_NAME'),
-        user=os.getenv('DB_USER'),
-        password=os.getenv('DB_PASSWORD'),
-        port=os.getenv('DB_PORT'),
-        cursor_factory=RealDictCursor,
-        sslmode='require'
-    )
-
-# --- INICIALIZAR BASE DE DATOS ---
-def init_db():
-    conn = None
     try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        
-        # Tabla de usuarios (para el login)
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS usuarios (
-            username VARCHAR(50) PRIMARY KEY,
-            password VARCHAR(100) NOT NULL
+        conn = psycopg2.connect(
+            host=os.getenv('DB_HOST'),
+            database=os.getenv('DB_NAME'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD'),
+            port=os.getenv('DB_PORT'),
+            cursor_factory=RealDictCursor,
+            sslmode='require',
+            keepalives=1,
+            keepalives_idle=30,
+            keepalives_interval=10,
+            keepalives_count=5
         )
-        """)
-        
-        # Tabla de clientes
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS clientes (
-            nro_cliente VARCHAR(20) PRIMARY KEY,
-            sector VARCHAR(100),
-            nombre VARCHAR(100),
-            direccion VARCHAR(200),
-            telefono VARCHAR(50),
-            precinto VARCHAR(50)
-        )
-        """)
-        
-        # Tabla de reclamos
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS reclamos (
-            id SERIAL PRIMARY KEY,
-            fecha_hora TIMESTAMP NOT NULL,
-            nro_cliente VARCHAR(20) REFERENCES clientes(nro_cliente),
-            sector VARCHAR(100),
-            nombre VARCHAR(100),
-            direccion VARCHAR(200),
-            telefono VARCHAR(50),
-            tipo_reclamo VARCHAR(50),
-            detalles TEXT,
-            estado VARCHAR(20) CHECK (estado IN ('Pendiente', 'En curso', 'Resuelto')),
-            tecnico VARCHAR(200),
-            precinto VARCHAR(50),
-            atendido_por VARCHAR(100),
-            fecha_resolucion TIMESTAMP
-        )
-        """)
-        
-        # Insertar usuario admin si no existe (¡Cambia esta contraseña!)
-        cur.execute("""
-        INSERT INTO usuarios (username, password)
-        VALUES ('admin', 'AdminSeguro123!')
-        ON CONFLICT (username) DO NOTHING
-        """)
-        
-        conn.commit()
+        # Verificación de conexión activa
+        conn.cursor().execute('SELECT 1')
+        return conn
+    except psycopg2.InterfaceError:
+        # Intenta reconectar si hay error
+        return get_db_connection._clear_and_call()
+    except Exception as e:
+        st.error(f"Error de conexión: {e}")
+        st.stop()
+
+# --- INICIALIZACIÓN MEJORADA DE LA BASE DE DATOS ---
+def init_db():
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Tabla de usuarios
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS usuarios (
+                        username VARCHAR(50) PRIMARY KEY,
+                        password VARCHAR(100) NOT NULL
+                    )
+                """)
+                
+                # Tabla de clientes
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS clientes (
+                        nro_cliente VARCHAR(20) PRIMARY KEY,
+                        sector VARCHAR(100),
+                        nombre VARCHAR(100),
+                        direccion VARCHAR(200),
+                        telefono VARCHAR(50),
+                        precinto VARCHAR(50)
+                    )
+                """)
+                
+                # Tabla de reclamos
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS reclamos (
+                        id SERIAL PRIMARY KEY,
+                        fecha_hora TIMESTAMP NOT NULL,
+                        nro_cliente VARCHAR(20) REFERENCES clientes(nro_cliente),
+                        sector VARCHAR(100),
+                        nombre VARCHAR(100),
+                        direccion VARCHAR(200),
+                        telefono VARCHAR(50),
+                        tipo_reclamo VARCHAR(50),
+                        detalles TEXT,
+                        estado VARCHAR(20) CHECK (estado IN ('Pendiente', 'En curso', 'Resuelto')),
+                        tecnico VARCHAR(200),
+                        precinto VARCHAR(50),
+                        atendido_por VARCHAR(100),
+                        fecha_resolucion TIMESTAMP
+                    )
+                """)
+                
+                # Usuario admin
+                cur.execute("""
+                    INSERT INTO usuarios (username, password)
+                    VALUES ('admin', 'AdminSeguro123!')
+                    ON CONFLICT (username) DO NOTHING
+                """)
+                
+            conn.commit()
     except Exception as e:
         st.error(f"Error al inicializar la base de datos: {e}")
-    finally:
-        if conn:
-            conn.close()
+        st.stop()
 
-# --- LOGIN INTEGRADO CON BASE DE DATOS ---
+# --- FUNCIONES DE CONSULTA MEJORADAS ---
+@st.cache_data(ttl=60)
+def get_clientes():
+    try:
+        with get_db_connection() as conn:
+            return pd.read_sql("SELECT * FROM clientes", conn)
+    except Exception as e:
+        st.error(f"Error al obtener clientes: {e}")
+        return pd.DataFrame()
+
+@st.cache_data(ttl=60)
+def get_reclamos():
+    try:
+        with get_db_connection() as conn:
+            return pd.read_sql("""
+                SELECT r.*, c.precinto as precinto_cliente 
+                FROM reclamos r
+                LEFT JOIN clientes c ON r.nro_cliente = c.nro_cliente
+                ORDER BY r.fecha_hora DESC
+            """, conn)
+    except Exception as e:
+        st.error(f"Error al obtener reclamos: {e}")
+        return pd.DataFrame()
+
+def guardar_reclamo(fila_reclamo):
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Insertar cliente si no existe
+                cur.execute("""
+                    INSERT INTO clientes (nro_cliente, sector, nombre, direccion, telefono, precinto)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (nro_cliente) DO NOTHING
+                """, fila_reclamo[1:7])
+                
+                # Insertar reclamo
+                cur.execute("""
+                    INSERT INTO reclamos 
+                    (fecha_hora, nro_cliente, sector, nombre, direccion, telefono, 
+                     tipo_reclamo, detalles, estado, precinto, atendido_por)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, fila_reclamo)
+                
+            conn.commit()
+            return True
+    except Exception as e:
+        st.error(f"Error al guardar: {e}")
+        return False
+
+# --- SISTEMA DE LOGIN MEJORADO ---
 if "logueado" not in st.session_state:
     st.session_state.logueado = False
 if "usuario_actual" not in st.session_state:
@@ -115,23 +174,21 @@ if not st.session_state.logueado:
 
         if enviar:
             try:
-                conn = get_db_connection()
-                cur = conn.cursor()
-                cur.execute(
-                    "SELECT * FROM usuarios WHERE username = %s AND password = %s",
-                    (usuario, password))
-                if cur.fetchone():
-                    st.session_state.logueado = True
-                    st.session_state.usuario_actual = usuario
-                    st.success("✅ Acceso concedido.")
-                    st.experimental_rerun()
-                else:
-                    st.error("❌ Usuario o contraseña incorrectos")
+                with get_db_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "SELECT * FROM usuarios WHERE username = %s AND password = %s",
+                            (usuario, password))
+                        if cur.fetchone():
+                            st.session_state.logueado = True
+                            st.session_state.usuario_actual = usuario
+                            st.success("✅ Acceso concedido.")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error("❌ Usuario o contraseña incorrectos")
             except Exception as e:
                 st.error(f"Error de conexión: {e}")
-            finally:
-                if 'conn' in locals():
-                    conn.close()
     st.stop()
 
 # --- ESTILO VISUAL GLOBAL ---
@@ -145,55 +202,6 @@ st.markdown("""
 
 # --- LISTA DE TÉCNICOS DISPONIBLES ---
 tecnicos_disponibles = ["Braian", "Conejo", "Juan", "Junior", "Maxi", "Ramon", "Roque", "Viki", "Oficina", "Base"]
-
-# --- FUNCIONES COMUNES ---
-@st.cache_data(ttl=60)
-def get_clientes():
-    conn = get_db_connection()
-    df = pd.read_sql("SELECT * FROM clientes", conn)
-    conn.close()
-    return df
-
-@st.cache_data(ttl=60)
-def get_reclamos():
-    conn = get_db_connection()
-    df = pd.read_sql("""
-        SELECT r.*, c.precinto as precinto_cliente 
-        FROM reclamos r
-        LEFT JOIN clientes c ON r.nro_cliente = c.nro_cliente
-        ORDER BY r.fecha_hora DESC
-    """, conn)
-    conn.close()
-    return df
-
-def guardar_reclamo(fila_reclamo):
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        
-        # Insertar cliente si no existe
-        cur.execute("""
-            INSERT INTO clientes (nro_cliente, sector, nombre, direccion, telefono, precinto)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            ON CONFLICT (nro_cliente) DO NOTHING
-        """, fila_reclamo[1:7])
-        
-        # Insertar reclamo
-        cur.execute("""
-            INSERT INTO reclamos 
-            (fecha_hora, nro_cliente, sector, nombre, direccion, telefono, 
-             tipo_reclamo, detalles, estado, precinto, atendido_por)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, fila_reclamo)
-        
-        conn.commit()
-        return True
-    except Exception as e:
-        st.error(f"Error al guardar: {e}")
-        return False
-    finally:
-        if 'conn' in locals():
-            conn.close()
 
 # --- TÍTULO Y DASHBOARD ---
 st.title("📋 Fusion Reclamos App")
