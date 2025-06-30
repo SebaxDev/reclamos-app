@@ -13,6 +13,9 @@ import requests
 import time
 from psycopg2.extras import RealDictCursor
 
+# Cargar variables de entorno al inicio
+load_dotenv()
+
 # Configuración de página
 st.set_page_config(
     page_title="Fusion Reclamos App",
@@ -39,51 +42,124 @@ def keep_alive():
 if 'RENDER' in os.environ:
     threading.Thread(target=keep_alive, daemon=True).start()
 
+# --- VERIFICACIÓN DE VARIABLES DE ENTORNO ---
+def verificar_variables_entorno():
+    """Verifica que todas las variables de entorno necesarias estén configuradas"""
+    variables_requeridas = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD', 'DB_PORT']
+    variables_faltantes = []
+    
+    for var in variables_requeridas:
+        valor = os.getenv(var)
+        if not valor:
+            variables_faltantes.append(var)
+        else:
+            # Solo mostrar los primeros caracteres de la contraseña por seguridad
+            if var == 'DB_PASSWORD':
+                st.sidebar.write(f"✅ {var}: {'*' * len(valor)}")
+            else:
+                st.sidebar.write(f"✅ {var}: {valor}")
+    
+    if variables_faltantes:
+        st.sidebar.error(f"❌ Variables de entorno faltantes: {', '.join(variables_faltantes)}")
+        st.error("""
+        🔧 **Configuración requerida:**
+        
+        Necesitas crear un archivo `.env` en el mismo directorio que este script con las siguientes variables:
+        
+        ```
+        DB_HOST=tu_host_de_neon
+        DB_NAME=tu_nombre_de_base_de_datos
+        DB_USER=tu_usuario
+        DB_PASSWORD=tu_contraseña
+        DB_PORT=5432
+        ```
+        
+        **Para obtener estas credenciales:**
+        1. Ve a [Neon Console](https://console.neon.tech/)
+        2. Selecciona tu proyecto
+        3. Ve a la sección "Connection Details"
+        4. Copia los valores correspondientes
+        """)
+        return False
+    
+    return True
+
 # --- CONEXIÓN MEJORADA A NEON.POSTGRESQL ---
 @st.cache_resource(ttl=3600, show_spinner="Conectando a la base de datos...")
 def get_db_connection():
-    max_retries = 5  # Aumentamos los reintentos
-    retry_delay = 3  # Aumentamos el tiempo entre reintentos
+    # Verificar variables de entorno primero
+    if not verificar_variables_entorno():
+        return None
+    
+    max_retries = 3  # Reducimos los reintentos para diagnóstico más rápido
+    retry_delay = 2
+    
+    # Obtener credenciales
+    db_config = {
+        'host': os.getenv('DB_HOST'),
+        'database': os.getenv('DB_NAME'),
+        'user': os.getenv('DB_USER'),
+        'password': os.getenv('DB_PASSWORD'),
+        'port': int(os.getenv('DB_PORT', 5432)),
+        'cursor_factory': RealDictCursor,
+        'sslmode': 'require',
+        'connect_timeout': 15,
+        'keepalives': 1,
+        'keepalives_idle': 30,
+        'keepalives_interval': 10,
+        'keepalives_count': 5
+    }
     
     for attempt in range(max_retries):
         try:
-            conn = psycopg2.connect(
-                host=os.getenv('DB_HOST'),
-                database=os.getenv('DB_NAME'),
-                user=os.getenv('DB_USER'),
-                password=os.getenv('DB_PASSWORD'),
-                port=os.getenv('DB_PORT'),
-                cursor_factory=RealDictCursor,
-                sslmode='require',
-                keepalives=1,
-                keepalives_idle=60,  # Aumentamos
-                keepalives_interval=20,  # Aumentamos
-                keepalives_count=10,  # Aumentamos
-                connect_timeout=10  # Agregamos timeout explícito
-            )
+            st.sidebar.info(f"🔄 Intento de conexión {attempt + 1}/{max_retries}")
             
-            # Verificación más robusta
+            conn = psycopg2.connect(**db_config)
+            
+            # Verificación de conexión
             with conn.cursor() as cur:
-                cur.execute('SELECT 1')
-                result = cur.fetchone()
-                if result and result[0] == 1:
-                    return conn
-                else:
-                    conn.close()
-                    raise Exception("La conexión no es válida")
+                cur.execute('SELECT version()')
+                version = cur.fetchone()
+                st.sidebar.success(f"✅ Conectado a PostgreSQL")
+                st.sidebar.info(f"📊 Versión: {version[0][:50]}...")
+                return conn
                     
-        except (psycopg2.InterfaceError, psycopg2.OperationalError) as e:
-            print(f"Intento {attempt + 1} fallido: {str(e)}")
+        except psycopg2.OperationalError as e:
+            error_msg = str(e)
+            st.sidebar.error(f"❌ Error de conexión (intento {attempt + 1}): {error_msg}")
+            
+            # Diagnósticos específicos
+            if "could not connect to server" in error_msg.lower():
+                st.sidebar.warning("🔍 Posible problema: Host o puerto incorrectos")
+            elif "authentication failed" in error_msg.lower():
+                st.sidebar.warning("🔍 Posible problema: Usuario o contraseña incorrectos")
+            elif "database" in error_msg.lower() and "does not exist" in error_msg.lower():
+                st.sidebar.warning("🔍 Posible problema: Nombre de base de datos incorrecto")
+            
             if attempt == max_retries - 1:
-                st.error(f"⚠️ No se pudo conectar después de {max_retries} intentos. Verifica tu conexión a internet y las credenciales de la base de datos.")
-                st.stop()
-            time.sleep(retry_delay * (attempt + 1))  # Espera progresiva
+                st.error(f"""
+                ⚠️ **No se pudo conectar a la base de datos después de {max_retries} intentos.**
+                
+                **Error específico:** {error_msg}
+                
+                **Pasos para solucionar:**
+                1. Verifica que tu base de datos Neon esté activa
+                2. Confirma que las credenciales en el archivo `.env` sean correctas
+                3. Asegúrate de tener conexión a internet
+                4. Verifica que tu IP esté permitida en Neon (si tienes restricciones)
+                """)
+                return None
+            
+            time.sleep(retry_delay * (attempt + 1))
             
         except Exception as e:
-            print(f"Error inesperado: {str(e)}")
+            error_msg = str(e) if str(e) else "Error desconocido"
+            st.sidebar.error(f"❌ Error inesperado: {error_msg}")
+            
             if attempt == max_retries - 1:
-                st.error(f"❌ Error crítico de conexión: {str(e)}")
-                st.stop()
+                st.error(f"❌ Error crítico de conexión: {error_msg}")
+                return None
+            
             time.sleep(retry_delay)
     
     return None
@@ -93,62 +169,65 @@ def init_db():
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            with get_db_connection() as conn:
-                if conn is None:
-                    raise Exception("No se pudo establecer conexión con la base de datos")
+            conn = get_db_connection()
+            if conn is None:
+                raise Exception("No se pudo establecer conexión con la base de datos")
+            
+            with conn.cursor() as cur:
+                # Tabla de usuarios
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS usuarios (
+                        username VARCHAR(50) PRIMARY KEY,
+                        password VARCHAR(100) NOT NULL
+                    )
+                """)
                 
-                with conn.cursor() as cur:
-                    # Tabla de usuarios
-                    cur.execute("""
-                        CREATE TABLE IF NOT EXISTS usuarios (
-                            username VARCHAR(50) PRIMARY KEY,
-                            password VARCHAR(100) NOT NULL
-                        )
-                    """)
-                    
-                    # Tabla de clientes
-                    cur.execute("""
-                        CREATE TABLE IF NOT EXISTS clientes (
-                            nro_cliente VARCHAR(20) PRIMARY KEY,
-                            sector VARCHAR(100),
-                            nombre VARCHAR(100),
-                            direccion VARCHAR(200),
-                            telefono VARCHAR(50),
-                            precinto VARCHAR(50)
-                        )
-                    """)
-                    
-                    # Tabla de reclamos
-                    cur.execute("""
-                        CREATE TABLE IF NOT EXISTS reclamos (
-                            id SERIAL PRIMARY KEY,
-                            fecha_hora TIMESTAMP NOT NULL,
-                            nro_cliente VARCHAR(20) REFERENCES clientes(nro_cliente),
-                            sector VARCHAR(100),
-                            nombre VARCHAR(100),
-                            direccion VARCHAR(200),
-                            telefono VARCHAR(50),
-                            tipo_reclamo VARCHAR(50),
-                            detalles TEXT,
-                            estado VARCHAR(20) CHECK (estado IN ('Pendiente', 'En curso', 'Resuelto')),
-                            tecnico VARCHAR(200),
-                            precinto VARCHAR(50),
-                            atendido_por VARCHAR(100),
-                            fecha_resolucion TIMESTAMP
-                        )
-                    """)
-                    
-                    # Usuario admin
-                    cur.execute("""
-                        INSERT INTO usuarios (username, password)
-                        VALUES ('admin', 'AdminSeguro123!')
-                        ON CONFLICT (username) DO NOTHING
-                    """)
+                # Tabla de clientes
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS clientes (
+                        nro_cliente VARCHAR(20) PRIMARY KEY,
+                        sector VARCHAR(100),
+                        nombre VARCHAR(100),
+                        direccion VARCHAR(200),
+                        telefono VARCHAR(50),
+                        precinto VARCHAR(50)
+                    )
+                """)
                 
-                conn.commit()
-                return True
+                # Tabla de reclamos
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS reclamos (
+                        id SERIAL PRIMARY KEY,
+                        fecha_hora TIMESTAMP NOT NULL,
+                        nro_cliente VARCHAR(20) REFERENCES clientes(nro_cliente),
+                        sector VARCHAR(100),
+                        nombre VARCHAR(100),
+                        direccion VARCHAR(200),
+                        telefono VARCHAR(50),
+                        tipo_reclamo VARCHAR(50),
+                        detalles TEXT,
+                        estado VARCHAR(20) CHECK (estado IN ('Pendiente', 'En curso', 'Resuelto')),
+                        tecnico VARCHAR(200),
+                        precinto VARCHAR(50),
+                        atendido_por VARCHAR(100),
+                        fecha_resolucion TIMESTAMP
+                    )
+                """)
+                
+                # Usuario admin
+                cur.execute("""
+                    INSERT INTO usuarios (username, password)
+                    VALUES ('admin', 'AdminSeguro123!')
+                    ON CONFLICT (username) DO NOTHING
+                """)
+            
+            conn.commit()
+            conn.close()
+            st.sidebar.success("✅ Base de datos inicializada correctamente")
+            return True
                 
         except Exception as e:
+            st.sidebar.error(f"❌ Error al inicializar BD (intento {attempt + 1}): {str(e)}")
             if attempt == max_retries - 1:
                 st.error(f"Error al inicializar la base de datos: {e}")
                 return False
@@ -159,10 +238,13 @@ def init_db():
 @st.cache_data(ttl=60)
 def get_clientes():
     try:
-        with get_db_connection() as conn:
-            if conn is None:
-                return pd.DataFrame()
-            return pd.read_sql("SELECT * FROM clientes", conn)
+        conn = get_db_connection()
+        if conn is None:
+            return pd.DataFrame()
+        
+        df = pd.read_sql("SELECT * FROM clientes", conn)
+        conn.close()
+        return df
     except Exception as e:
         st.error(f"Error al obtener clientes: {e}")
         return pd.DataFrame()
@@ -170,43 +252,47 @@ def get_clientes():
 @st.cache_data(ttl=60)
 def get_reclamos():
     try:
-        with get_db_connection() as conn:
-            if conn is None:
-                return pd.DataFrame()
-            return pd.read_sql("""
-                SELECT r.*, c.precinto as precinto_cliente 
-                FROM reclamos r
-                LEFT JOIN clientes c ON r.nro_cliente = c.nro_cliente
-                ORDER BY r.fecha_hora DESC
-            """, conn)
+        conn = get_db_connection()
+        if conn is None:
+            return pd.DataFrame()
+        
+        df = pd.read_sql("""
+            SELECT r.*, c.precinto as precinto_cliente 
+            FROM reclamos r
+            LEFT JOIN clientes c ON r.nro_cliente = c.nro_cliente
+            ORDER BY r.fecha_hora DESC
+        """, conn)
+        conn.close()
+        return df
     except Exception as e:
         st.error(f"Error al obtener reclamos: {e}")
         return pd.DataFrame()
 
 def guardar_reclamo(fila_reclamo):
     try:
-        with get_db_connection() as conn:
-            if conn is None:
-                return False
-                
-            with conn.cursor() as cur:
-                # Insertar cliente si no existe
-                cur.execute("""
-                    INSERT INTO clientes (nro_cliente, sector, nombre, direccion, telefono, precinto)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (nro_cliente) DO NOTHING
-                """, fila_reclamo[1:7])
-                
-                # Insertar reclamo
-                cur.execute("""
-                    INSERT INTO reclamos 
-                    (fecha_hora, nro_cliente, sector, nombre, direccion, telefono, 
-                     tipo_reclamo, detalles, estado, precinto, atendido_por)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, fila_reclamo)
-                
-            conn.commit()
-            return True
+        conn = get_db_connection()
+        if conn is None:
+            return False
+            
+        with conn.cursor() as cur:
+            # Insertar cliente si no existe
+            cur.execute("""
+                INSERT INTO clientes (nro_cliente, sector, nombre, direccion, telefono, precinto)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (nro_cliente) DO NOTHING
+            """, fila_reclamo[1:7])
+            
+            # Insertar reclamo
+            cur.execute("""
+                INSERT INTO reclamos 
+                (fecha_hora, nro_cliente, sector, nombre, direccion, telefono, 
+                 tipo_reclamo, detalles, estado, precinto, atendido_por)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, fila_reclamo)
+            
+        conn.commit()
+        conn.close()
+        return True
     except Exception as e:
         st.error(f"Error al guardar: {e}")
         return False
@@ -217,11 +303,27 @@ if "logueado" not in st.session_state:
 if "usuario_actual" not in st.session_state:
     st.session_state.usuario_actual = ""
 
+# Verificar configuración antes del login
+if not verificar_variables_entorno():
+    st.stop()
+
 if not st.session_state.logueado:
     st.title("🔐 Iniciar sesión")
+    
+    # Mostrar estado de conexión
+    with st.expander("🔍 Diagnóstico de conexión", expanded=False):
+        if st.button("🧪 Probar conexión"):
+            with st.spinner("Probando conexión..."):
+                conn = get_db_connection()
+                if conn:
+                    st.success("✅ Conexión exitosa!")
+                    conn.close()
+                else:
+                    st.error("❌ No se pudo conectar")
+    
     with st.form("login_formulario"):
-        usuario = st.text_input("Usuario", value="admin")  # Valor por defecto para pruebas
-        password = st.text_input("Contraseña", type="password", value="AdminSeguro123!")  # Valor por defecto
+        usuario = st.text_input("Usuario", value="admin")
+        password = st.text_input("Contraseña", type="password", value="AdminSeguro123!")
         enviar = st.form_submit_button("Ingresar")
 
         if enviar:
@@ -229,7 +331,7 @@ if not st.session_state.logueado:
                 try:
                     conn = get_db_connection()
                     if conn is None:
-                        st.error("🔴 No se pudo conectar a la base de datos. Intenta nuevamente más tarde.")
+                        st.error("🔴 No se pudo conectar a la base de datos. Verifica la configuración.")
                     else:
                         with conn.cursor() as cur:
                             cur.execute(
@@ -241,10 +343,12 @@ if not st.session_state.logueado:
                                 st.session_state.logueado = True
                                 st.session_state.usuario_actual = usuario
                                 st.success("✅ Acceso concedido")
+                                conn.close()
                                 time.sleep(1)
                                 st.rerun()
                             else:
                                 st.error("❌ Usuario o contraseña incorrectos")
+                                conn.close()
                                 time.sleep(1)
                 except Exception as e:
                     st.error(f"⚠️ Error durante el login: {str(e)}")
@@ -386,7 +490,7 @@ if opcion == "Inicio":
                     st.success("✅ Reclamo guardado correctamente.")
                     if cliente_existente is None:
                         st.info("🗂️ Nuevo cliente agregado a la base de datos.")
-                    st.experimental_rerun()
+                    st.rerun()
 
 # --- SECCIÓN 2: RECLAMOS CARGADOS ---
 elif opcion == "Reclamos cargados":
@@ -444,28 +548,29 @@ elif opcion == "Reclamos cargados":
 
         if st.button("💾 Guardar cambios"):
             try:
-                with get_db_connection() as conn:
-                    if conn is None:
-                        st.error("Error de conexión con la base de datos")
-                    else:
-                        with conn.cursor() as cur:
-                            for _, row in edited_df.iterrows():
-                                cur.execute("""
-                                    UPDATE reclamos 
-                                    SET estado = %s, 
-                                        tecnico = %s, 
-                                        precinto = %s
-                                    WHERE id = %s
-                                """, (
-                                    row["estado"],
-                                    row["tecnico"],
-                                    row["precinto"],
-                                    row["id"]
-                                ))
-                        
-                        conn.commit()
-                        st.success("✅ Cambios guardados correctamente.")
-                        st.experimental_rerun()
+                conn = get_db_connection()
+                if conn is None:
+                    st.error("Error de conexión con la base de datos")
+                else:
+                    with conn.cursor() as cur:
+                        for _, row in edited_df.iterrows():
+                            cur.execute("""
+                                UPDATE reclamos 
+                                SET estado = %s, 
+                                    tecnico = %s, 
+                                    precinto = %s
+                                WHERE id = %s
+                            """, (
+                                row["estado"],
+                                row["tecnico"],
+                                row["precinto"],
+                                row["id"]
+                            ))
+                    
+                    conn.commit()
+                    conn.close()
+                    st.success("✅ Cambios guardados correctamente.")
+                    st.rerun()
             except Exception as e:
                 st.error(f"❌ Error al guardar: {e}")
                 
@@ -479,22 +584,24 @@ elif opcion == "Historial por cliente":
 
     if historial_cliente:
         try:
-            with get_db_connection() as conn:
-                if conn is None:
-                    st.error("Error de conexión con la base de datos")
+            conn = get_db_connection()
+            if conn is None:
+                st.error("Error de conexión con la base de datos")
+            else:
+                historial = pd.read_sql("""
+                    SELECT fecha_hora, tipo_reclamo, estado, tecnico, precinto, detalles
+                    FROM reclamos 
+                    WHERE nro_cliente = %s
+                    ORDER BY fecha_hora DESC
+                """, conn, params=(historial_cliente,))
+                
+                conn.close()
+                
+                if not historial.empty:
+                    st.success(f"🔎 Se encontraron {len(historial)} reclamos para el cliente {historial_cliente}.")
+                    st.dataframe(historial, use_container_width=True)
                 else:
-                    historial = pd.read_sql("""
-                        SELECT fecha_hora, tipo_reclamo, estado, tecnico, precinto, detalles
-                        FROM reclamos 
-                        WHERE nro_cliente = %s
-                        ORDER BY fecha_hora DESC
-                    """, conn, params=(historial_cliente,))
-                    
-                    if not historial.empty:
-                        st.success(f"🔎 Se encontraron {len(historial)} reclamos para el cliente {historial_cliente}.")
-                        st.dataframe(historial, use_container_width=True)
-                    else:
-                        st.info("❕ Este cliente no tiene reclamos registrados.")
+                    st.info("❕ Este cliente no tiene reclamos registrados.")
         except Exception as e:
             st.error(f"Error al cargar historial: {e}")
 
@@ -505,43 +612,45 @@ elif opcion == "Editar cliente":
 
     if cliente_editar:
         try:
-            with get_db_connection() as conn:
-                if conn is None:
-                    st.error("Error de conexión con la base de datos")
-                else:
-                    with conn.cursor() as cur:
-                        cur.execute("SELECT * FROM clientes WHERE nro_cliente = %s", (cliente_editar,))
-                        cliente_row = cur.fetchone()
+            conn = get_db_connection()
+            if conn is None:
+                st.error("Error de conexión con la base de datos")
+            else:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM clientes WHERE nro_cliente = %s", (cliente_editar,))
+                    cliente_row = cur.fetchone()
 
-                        if cliente_row:
-                            with st.form("form_editar_cliente"):
-                                nuevo_sector = st.text_input("🏙️ Sector", value=cliente_row["sector"])
-                                nuevo_nombre = st.text_input("👤 Nombre", value=cliente_row["nombre"])
-                                nueva_direccion = st.text_input("📍 Dirección", value=cliente_row["direccion"])
-                                nuevo_telefono = st.text_input("📞 Teléfono", value=cliente_row["telefono"])
-                                nuevo_precinto = st.text_input("🔒 N° de Precinto", value=cliente_row["precinto"])
+                    if cliente_row:
+                        with st.form("form_editar_cliente"):
+                            nuevo_sector = st.text_input("🏙️ Sector", value=cliente_row["sector"])
+                            nuevo_nombre = st.text_input("👤 Nombre", value=cliente_row["nombre"])
+                            nueva_direccion = st.text_input("📍 Dirección", value=cliente_row["direccion"])
+                            nuevo_telefono = st.text_input("📞 Teléfono", value=cliente_row["telefono"])
+                            nuevo_precinto = st.text_input("🔒 N° de Precinto", value=cliente_row["precinto"])
 
-                                if st.form_submit_button("💾 Actualizar datos del cliente"):
-                                    try:
-                                        cur.execute("""
-                                            UPDATE clientes 
-                                            SET sector = %s, nombre = %s, direccion = %s, 
-                                                telefono = %s, precinto = %s
-                                            WHERE nro_cliente = %s
-                                        """, (
-                                            nuevo_sector.upper(),
-                                            nuevo_nombre.upper(),
-                                            nueva_direccion.upper(),
-                                            nuevo_telefono,
-                                            nuevo_precinto,
-                                            cliente_editar
-                                        ))
-                                        conn.commit()
-                                        st.success("✅ Cliente actualizado correctamente.")
-                                    except Exception as e:
-                                        st.error(f"❌ Error al actualizar: {e}")
-                        else:
-                            st.warning("⚠️ Cliente no encontrado.")
+                            if st.form_submit_button("💾 Actualizar datos del cliente"):
+                                try:
+                                    cur.execute("""
+                                        UPDATE clientes 
+                                        SET sector = %s, nombre = %s, direccion = %s, 
+                                            telefono = %s, precinto = %s
+                                        WHERE nro_cliente = %s
+                                    """, (
+                                        nuevo_sector.upper(),
+                                        nuevo_nombre.upper(),
+                                        nueva_direccion.upper(),
+                                        nuevo_telefono,
+                                        nuevo_precinto,
+                                        cliente_editar
+                                    ))
+                                    conn.commit()
+                                    st.success("✅ Cliente actualizado correctamente.")
+                                except Exception as e:
+                                    st.error(f"❌ Error al actualizar: {e}")
+                    else:
+                        st.warning("⚠️ Cliente no encontrado.")
+                
+                conn.close()
         except Exception as e:
             st.error(f"Error de conexión: {e}")
 
@@ -561,26 +670,27 @@ elif opcion == "Editar cliente":
                 st.error("⚠️ Debés ingresar al menos el N° de cliente y el nombre.")
             else:
                 try:
-                    with get_db_connection() as conn:
-                        if conn is None:
-                            st.error("Error de conexión con la base de datos")
-                        else:
-                            with conn.cursor() as cur:
-                                cur.execute("""
-                                    INSERT INTO clientes 
-                                    (nro_cliente, sector, nombre, direccion, telefono, precinto)
-                                    VALUES (%s, %s, %s, %s, %s, %s)
-                                """, (
-                                    nuevo_nro,
-                                    nuevo_sector.upper(),
-                                    nuevo_nombre.upper(),
-                                    nueva_direccion.upper(),
-                                    nuevo_telefono,
-                                    nuevo_precinto
-                                ))
-                                conn.commit()
-                                st.success("✅ Nuevo cliente agregado correctamente.")
-                                st.experimental_rerun()
+                    conn = get_db_connection()
+                    if conn is None:
+                        st.error("Error de conexión con la base de datos")
+                    else:
+                        with conn.cursor() as cur:
+                            cur.execute("""
+                                INSERT INTO clientes 
+                                (nro_cliente, sector, nombre, direccion, telefono, precinto)
+                                VALUES (%s, %s, %s, %s, %s, %s)
+                            """, (
+                                nuevo_nro,
+                                nuevo_sector.upper(),
+                                nuevo_nombre.upper(),
+                                nueva_direccion.upper(),
+                                nuevo_telefono,
+                                nuevo_precinto
+                            ))
+                            conn.commit()
+                            conn.close()
+                            st.success("✅ Nuevo cliente agregado correctamente.")
+                            st.rerun()
                 except psycopg2.errors.UniqueViolation:
                     st.warning("⚠️ Este cliente ya existe.")
                 except Exception as e:
@@ -684,63 +794,65 @@ elif opcion == "Seguimiento técnico":
 
     if cliente_input:
         try:
-            with get_db_connection() as conn:
-                if conn is None:
-                    st.error("Error de conexión con la base de datos")
-                else:
-                    df_filtrado = pd.read_sql("""
-                        SELECT * FROM reclamos 
-                        WHERE nro_cliente = %s 
-                        AND estado IN ('Pendiente', 'En curso')
-                        ORDER BY fecha_hora DESC
-                        LIMIT 1
-                    """, conn, params=(cliente_input,))
+            conn = get_db_connection()
+            if conn is None:
+                st.error("Error de conexión con la base de datos")
+            else:
+                df_filtrado = pd.read_sql("""
+                    SELECT * FROM reclamos 
+                    WHERE nro_cliente = %s 
+                    AND estado IN ('Pendiente', 'En curso')
+                    ORDER BY fecha_hora DESC
+                    LIMIT 1
+                """, conn, params=(cliente_input,))
+                
+                if not df_filtrado.empty:
+                    reclamo_actual = df_filtrado.iloc[0]
                     
-                    if not df_filtrado.empty:
-                        reclamo_actual = df_filtrado.iloc[0]
-                        
-                        st.info(f"📅 Reclamo registrado el {reclamo_actual['fecha_hora']}")
-                        st.write(f"📌 Tipo: **{reclamo_actual['tipo_reclamo']}**")
-                        st.write(f"📍 Dirección: {reclamo_actual['direccion']}")
-                        st.write(f"🔒 Precinto: {reclamo_actual.get('precinto', '')}")
-                        st.write(f"📄 Detalles: {reclamo_actual['detalles']}")
+                    st.info(f"📅 Reclamo registrado el {reclamo_actual['fecha_hora']}")
+                    st.write(f"📌 Tipo: **{reclamo_actual['tipo_reclamo']}**")
+                    st.write(f"📍 Dirección: {reclamo_actual['direccion']}")
+                    st.write(f"🔒 Precinto: {reclamo_actual.get('precinto', '')}")
+                    st.write(f"📄 Detalles: {reclamo_actual['detalles']}")
 
-                        nuevo_estado = st.selectbox(
-                            "⚙️ Cambiar estado",
-                            ["Pendiente", "En curso", "Resuelto"],
-                            index=["Pendiente", "En curso", "Resuelto"].index(reclamo_actual["estado"])
-                        )
+                    nuevo_estado = st.selectbox(
+                        "⚙️ Cambiar estado",
+                        ["Pendiente", "En curso", "Resuelto"],
+                        index=["Pendiente", "En curso", "Resuelto"].index(reclamo_actual["estado"])
+                    )
 
-                        tecnicos_actuales = [t.strip() for t in reclamo_actual.get("tecnico", "").split(",") if t.strip()]
-                        nuevos_tecnicos = st.multiselect(
-                            "👷 Técnicos asignados",
-                            tecnicos_disponibles,
-                            default=[t for t in tecnicos_disponibles if t in tecnicos_actuales]
-                        )
+                    tecnicos_actuales = [t.strip() for t in reclamo_actual.get("tecnico", "").split(",") if t.strip()]
+                    nuevos_tecnicos = st.multiselect(
+                        "👷 Técnicos asignados",
+                        tecnicos_disponibles,
+                        default=[t for t in tecnicos_disponibles if t in tecnicos_actuales]
+                    )
 
-                        if st.button("💾 Actualizar reclamo"):
-                            if not nuevos_tecnicos:
-                                st.warning("⚠️ Debes asignar al menos un técnico")
-                            else:
-                                try:
-                                    with conn.cursor() as cur:
-                                        cur.execute("""
-                                            UPDATE reclamos 
-                                            SET estado = %s, 
-                                                tecnico = %s
-                                            WHERE id = %s
-                                        """, (
-                                            nuevo_estado,
-                                            ", ".join(nuevos_tecnicos),
-                                            reclamo_actual["id"]
-                                        ))
-                                    conn.commit()
-                                    st.success("✅ Reclamo actualizado correctamente.")
-                                    st.experimental_rerun()
-                                except Exception as e:
-                                    st.error(f"❌ Error al actualizar: {e}")
-                    else:
-                        st.warning("❕ Este cliente no tiene reclamos pendientes o en curso.")
+                    if st.button("💾 Actualizar reclamo"):
+                        if not nuevos_tecnicos:
+                            st.warning("⚠️ Debes asignar al menos un técnico")
+                        else:
+                            try:
+                                with conn.cursor() as cur:
+                                    cur.execute("""
+                                        UPDATE reclamos 
+                                        SET estado = %s, 
+                                            tecnico = %s
+                                        WHERE id = %s
+                                    """, (
+                                        nuevo_estado,
+                                        ", ".join(nuevos_tecnicos),
+                                        reclamo_actual["id"]
+                                    ))
+                                conn.commit()
+                                st.success("✅ Reclamo actualizado correctamente.")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Error al actualizar: {e}")
+                else:
+                    st.warning("❕ Este cliente no tiene reclamos pendientes o en curso.")
+                
+                conn.close()
         except Exception as e:
             st.error(f"Error de conexión: {e}")
 
@@ -748,86 +860,86 @@ elif opcion == "Seguimiento técnico":
 elif opcion == "Cierre de Reclamos":
     st.subheader("✅ Cierre de reclamos en curso")
     try:
-        with get_db_connection() as conn:
-            if conn is None:
-                st.error("Error de conexión con la base de datos")
+        conn = get_db_connection()
+        if conn is None:
+            st.error("Error de conexión con la base de datos")
+        else:
+            en_curso = pd.read_sql("""
+                SELECT r.*, c.precinto as precinto_cliente 
+                FROM reclamos r
+                LEFT JOIN clientes c ON r.nro_cliente = c.nro_cliente
+                WHERE r.estado = 'En curso'
+            """, conn)
+            
+            if en_curso.empty:
+                st.info("📭 No hay reclamos en curso en este momento.")
             else:
-                en_curso = pd.read_sql("""
-                    SELECT r.*, c.precinto as precinto_cliente 
-                    FROM reclamos r
-                    LEFT JOIN clientes c ON r.nro_cliente = c.nro_cliente
-                    WHERE r.estado = 'En curso'
-                """, conn)
+                # Filtrar por técnico
+                tecnicos_unicos = sorted(set(", ".join(en_curso["tecnico"].fillna("")).split(", ")))
+                tecnicos_seleccionados = st.multiselect("👷 Filtrar por técnico asignado", tecnicos_unicos)
                 
-                if en_curso.empty:
-                    st.info("📭 No hay reclamos en curso en este momento.")
-                else:
-                    # Filtrar por técnico
-                    tecnicos_unicos = sorted(set(", ".join(en_curso["tecnico"].fillna("")).split(", ")))
-                    tecnicos_seleccionados = st.multiselect("👷 Filtrar por técnico asignado", tecnicos_unicos)
-                    
-                    if tecnicos_seleccionados:
-                        en_curso = en_curso[
-                            en_curso["tecnico"].apply(
-                                lambda t: any(tecnico in str(t) for tecnico in tecnicos_seleccionados)
+                if tecnicos_seleccionados:
+                    en_curso = en_curso[
+                        en_curso["tecnico"].apply(
+                            lambda t: any(tecnico in str(t) for tecnico in tecnicos_seleccionados)
+                        )
+                    ]
+                
+                st.dataframe(
+                    en_curso[["nro_cliente", "nombre", "tipo_reclamo", "tecnico"]],
+                    use_container_width=True
+                )
+                
+                for _, row in en_curso.iterrows():
+                    with st.expander(f"Reclamo #{row['nro_cliente']} - {row['nombre']}"):
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            nuevo_precinto = st.text_input(
+                                "🔒 Precinto", 
+                                value=row["precinto_cliente"],
+                                key=f"precinto_{row['id']}"
                             )
-                        ]
-                    
-                    st.dataframe(
-                        en_curso[["nro_cliente", "nombre", "tipo_reclamo", "tecnico"]],
-                        use_container_width=True
-                    )
-                    
-                    for _, row in en_curso.iterrows():
-                        with st.expander(f"Reclamo #{row['nro_cliente']} - {row['nombre']}"):
-                            col1, col2 = st.columns(2)
                             
-                            with col1:
-                                nuevo_precinto = st.text_input(
-                                    "🔒 Precinto", 
-                                    value=row["precinto_cliente"],
-                                    key=f"precinto_{row['id']}"
-                                )
-                                
-                            with col2:
-                                if st.button("✅ Marcar como Resuelto", key=f"resolver_{row['id']}"):
-                                    try:
-                                        with conn.cursor() as cur:
-                                            # Actualizar reclamo
+                        with col2:
+                            if st.button("✅ Marcar como Resuelto", key=f"resolver_{row['id']}"):
+                                try:
+                                    with conn.cursor() as cur:
+                                        # Actualizar reclamo
+                                        cur.execute("""
+                                            UPDATE reclamos 
+                                            SET estado = 'Resuelto', 
+                                                fecha_resolucion = %s
+                                            WHERE id = %s
+                                        """, (
+                                            datetime.now(pytz.timezone("America/Argentina/Buenos_Aires")),
+                                            row["id"]
+                                        ))
+                                        
+                                        # Actualizar precinto si cambió
+                                        if nuevo_precinto.strip():
                                             cur.execute("""
-                                                UPDATE reclamos 
-                                                SET estado = 'Resuelto', 
-                                                    fecha_resolucion = %s
-                                                WHERE id = %s
+                                                UPDATE clientes 
+                                                SET precinto = %s 
+                                                WHERE nro_cliente = %s
                                             """, (
-                                                datetime.now(pytz.timezone("America/Argentina/Buenos_Aires")),
-                                                row["id"]
+                                                nuevo_precinto.strip(),
+                                                row["nro_cliente"]
                                             ))
-                                            
-                                            # Actualizar precinto si cambió
-                                            if nuevo_precinto.strip():
-                                                cur.execute("""
-                                                    UPDATE clientes 
-                                                    SET precinto = %s 
-                                                    WHERE nro_cliente = %s
-                                                """, (
-                                                    nuevo_precinto.strip(),
-                                                    row["nro_cliente"]
-                                                ))
-                                            
-                                        conn.commit()
-                                        st.success(f"🟢 Reclamo de {row['nombre']} cerrado correctamente.")
-                                        st.experimental_rerun()
-                                    except Exception as e:
-                                        st.error(f"❌ Error: {e}")
+                                        
+                                    conn.commit()
+                                    st.success(f"🟢 Reclamo de {row['nombre']} cerrado correctamente.")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"❌ Error: {e}")
+            
+            conn.close()
     except Exception as e:
         st.error(f"Error de conexión: {e}")
 
 # --- INICIALIZAR LA BASE DE DATOS AL INICIAR ---
-if __name__ == "__main__":
-    load_dotenv()
-    if os.getenv('DB_HOST'):
-        with st.spinner("Inicializando base de datos..."):
-            if not init_db():
-                st.error("No se pudo inicializar la base de datos. Verifica la conexión.")
-                st.stop()
+if verificar_variables_entorno():
+    with st.spinner("Inicializando base de datos..."):
+        if not init_db():
+            st.error("No se pudo inicializar la base de datos. Verifica la conexión.")
+            st.stop()
