@@ -42,8 +42,8 @@ if 'RENDER' in os.environ:
 # --- CONEXIÓN MEJORADA A NEON.POSTGRESQL ---
 @st.cache_resource(ttl=3600, show_spinner="Conectando a la base de datos...")
 def get_db_connection():
-    max_retries = 3
-    retry_delay = 2
+    max_retries = 5  # Aumentamos los reintentos
+    retry_delay = 3  # Aumentamos el tiempo entre reintentos
     
     for attempt in range(max_retries):
         try:
@@ -56,26 +56,35 @@ def get_db_connection():
                 cursor_factory=RealDictCursor,
                 sslmode='require',
                 keepalives=1,
-                keepalives_idle=30,
-                keepalives_interval=10,
-                keepalives_count=5
+                keepalives_idle=60,  # Aumentamos
+                keepalives_interval=20,  # Aumentamos
+                keepalives_count=10,  # Aumentamos
+                connect_timeout=10  # Agregamos timeout explícito
             )
             
-            # Verificación robusta de conexión
+            # Verificación más robusta
             with conn.cursor() as cur:
                 cur.execute('SELECT 1')
-                if cur.fetchone()[0] == 1:
+                result = cur.fetchone()
+                if result and result[0] == 1:
                     return conn
-            
+                else:
+                    conn.close()
+                    raise Exception("La conexión no es válida")
+                    
         except (psycopg2.InterfaceError, psycopg2.OperationalError) as e:
+            print(f"Intento {attempt + 1} fallido: {str(e)}")
             if attempt == max_retries - 1:
-                st.error(f"Error de conexión después de {max_retries} intentos: {e}")
+                st.error(f"⚠️ No se pudo conectar después de {max_retries} intentos. Verifica tu conexión a internet y las credenciales de la base de datos.")
+                st.stop()
+            time.sleep(retry_delay * (attempt + 1))  # Espera progresiva
+            
+        except Exception as e:
+            print(f"Error inesperado: {str(e)}")
+            if attempt == max_retries - 1:
+                st.error(f"❌ Error crítico de conexión: {str(e)}")
                 st.stop()
             time.sleep(retry_delay)
-            continue
-        except Exception as e:
-            st.error(f"Error inesperado de conexión: {e}")
-            st.stop()
     
     return None
 
@@ -211,30 +220,35 @@ if "usuario_actual" not in st.session_state:
 if not st.session_state.logueado:
     st.title("🔐 Iniciar sesión")
     with st.form("login_formulario"):
-        usuario = st.text_input("Usuario")
-        password = st.text_input("Contraseña", type="password")
+        usuario = st.text_input("Usuario", value="admin")  # Valor por defecto para pruebas
+        password = st.text_input("Contraseña", type="password", value="AdminSeguro123!")  # Valor por defecto
         enviar = st.form_submit_button("Ingresar")
 
         if enviar:
-            try:
-                with get_db_connection() as conn:
+            with st.spinner("Verificando credenciales..."):
+                try:
+                    conn = get_db_connection()
                     if conn is None:
-                        st.error("Error de conexión con la base de datos")
+                        st.error("🔴 No se pudo conectar a la base de datos. Intenta nuevamente más tarde.")
                     else:
                         with conn.cursor() as cur:
                             cur.execute(
                                 "SELECT * FROM usuarios WHERE username = %s AND password = %s",
-                                (usuario, password))
-                            if cur.fetchone():
+                                (usuario, password)
+                            )
+                            resultado = cur.fetchone()
+                            if resultado:
                                 st.session_state.logueado = True
                                 st.session_state.usuario_actual = usuario
-                                st.success("✅ Acceso concedido.")
+                                st.success("✅ Acceso concedido")
                                 time.sleep(1)
                                 st.rerun()
                             else:
                                 st.error("❌ Usuario o contraseña incorrectos")
-            except Exception as e:
-                st.error(f"Error de conexión: {e}")
+                                time.sleep(1)
+                except Exception as e:
+                    st.error(f"⚠️ Error durante el login: {str(e)}")
+                    time.sleep(1)
     st.stop()
 
 # --- ESTILO VISUAL GLOBAL ---
