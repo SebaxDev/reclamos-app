@@ -84,91 +84,49 @@ def verificar_variables_entorno():
     
     return True
 
-# --- CONEXIÓN SIMPLIFICADA A NEON.POSTGRESQL ---
-@st.cache_resource(ttl=3600, show_spinner="Conectando a la base de datos...")
+# --- CONEXIÓN SIMPLIFICADA SIN CACHE ---
 def get_db_connection():
+    """Crear una nueva conexión a la base de datos sin cache"""
     if not verificar_variables_entorno():
         return None
     
-    max_retries = 3
-    retry_delay = 2
-    
-    # Configuración de conexión
-    db_config = {
-        'host': os.getenv('DB_HOST'),
-        'database': os.getenv('DB_NAME'),
-        'user': os.getenv('DB_USER'),
-        'password': os.getenv('DB_PASSWORD'),
-        'port': int(os.getenv('DB_PORT', 5432)),
-        'cursor_factory': RealDictCursor,
-        'sslmode': 'require',
-        'connect_timeout': 15,
-        'keepalives': 1,
-        'keepalives_idle': 30,
-        'keepalives_interval': 10,
-        'keepalives_count': 5
-    }
-    
-    for attempt in range(max_retries):
-        try:
-            st.sidebar.info(f"🔄 Intento de conexión {attempt + 1}/{max_retries}")
-            
-            # Crear conexión directamente con RealDictCursor
-            conn = psycopg2.connect(**db_config)
-            
-            # Verificación simple de conexión
-            with conn.cursor() as cur:
-                cur.execute('SELECT 1 as test')
-                result = cur.fetchone()
-                if result and result['test'] == 1:  # Usar clave del diccionario
-                    st.sidebar.success(f"✅ Conectado a PostgreSQL")
-                    return conn
-                else:
-                    conn.close()
-                    raise Exception("Verificación de conexión falló")
-                    
-        except psycopg2.OperationalError as e:
-            error_msg = str(e)
-            st.sidebar.error(f"❌ Error de conexión (intento {attempt + 1}): {error_msg}")
-            
-            # Diagnósticos específicos
-            if "could not connect to server" in error_msg.lower():
-                st.sidebar.warning("🔍 Posible problema: Host o puerto incorrectos")
-            elif "authentication failed" in error_msg.lower():
-                st.sidebar.warning("🔍 Posible problema: Usuario o contraseña incorrectos")
-            elif "database" in error_msg.lower() and "does not exist" in error_msg.lower():
-                st.sidebar.warning("🔍 Posible problema: Nombre de base de datos incorrecto")
-            
-            if attempt == max_retries - 1:
-                st.error(f"""
-                ⚠️ **No se pudo conectar a la base de datos después de {max_retries} intentos.**
-                
-                **Error específico:** {error_msg}
-                
-                **Pasos para solucionar:**
-                1. Verifica que tu base de datos Neon esté activa
-                2. Confirma que las credenciales en el archivo `.env` sean correctas
-                3. Asegúrate de tener conexión a internet
-                4. Verifica que tu IP esté permitida en Neon (si tienes restricciones)
-                """)
+    try:
+        # Configuración de conexión
+        db_config = {
+            'host': os.getenv('DB_HOST'),
+            'database': os.getenv('DB_NAME'),
+            'user': os.getenv('DB_USER'),
+            'password': os.getenv('DB_PASSWORD'),
+            'port': int(os.getenv('DB_PORT', 5432)),
+            'cursor_factory': RealDictCursor,
+            'sslmode': 'require',
+            'connect_timeout': 10,
+            'keepalives': 1,
+            'keepalives_idle': 30,
+            'keepalives_interval': 10,
+            'keepalives_count': 5
+        }
+        
+        # Crear conexión directamente
+        conn = psycopg2.connect(**db_config)
+        
+        # Verificación simple de conexión
+        with conn.cursor() as cur:
+            cur.execute('SELECT 1 as test')
+            result = cur.fetchone()
+            if result and result['test'] == 1:
+                return conn
+            else:
+                conn.close()
                 return None
-            
-            time.sleep(retry_delay * (attempt + 1))
-            
-        except Exception as e:
-            error_msg = str(e) if str(e) else "Error desconocido de conexión"
-            st.sidebar.error(f"❌ Error inesperado (intento {attempt + 1}): {error_msg}")
-            
-            if attempt == max_retries - 1:
-                st.error(f"❌ Error crítico de conexión: {error_msg}")
-                return None
-            
-            time.sleep(retry_delay)
-    
-    return None
+                
+    except Exception as e:
+        print(f"Error de conexión: {str(e)}")
+        return None
 
 # --- INICIALIZACIÓN MEJORADA DE LA BASE DE DATOS ---
 def init_db():
+    """Inicializar las tablas de la base de datos"""
     max_retries = 3
     for attempt in range(max_retries):
         try:
@@ -237,12 +195,13 @@ def init_db():
             time.sleep(2)
             continue
 
-# --- FUNCIONES DE CONSULTA MEJORADAS ---
-@st.cache_data(ttl=60)
+# --- FUNCIONES DE CONSULTA SIN CACHE ---
 def get_clientes():
+    """Obtener todos los clientes de la base de datos"""
     try:
         conn = get_db_connection()
         if conn is None:
+            st.error("No se pudo conectar a la base de datos para obtener clientes")
             return pd.DataFrame()
         
         df = pd.read_sql("SELECT * FROM clientes", conn)
@@ -252,11 +211,12 @@ def get_clientes():
         st.error(f"Error al obtener clientes: {e}")
         return pd.DataFrame()
 
-@st.cache_data(ttl=60)
 def get_reclamos():
+    """Obtener todos los reclamos de la base de datos"""
     try:
         conn = get_db_connection()
         if conn is None:
+            st.error("No se pudo conectar a la base de datos para obtener reclamos")
             return pd.DataFrame()
         
         df = pd.read_sql("""
@@ -272,9 +232,11 @@ def get_reclamos():
         return pd.DataFrame()
 
 def guardar_reclamo(fila_reclamo):
+    """Guardar un nuevo reclamo en la base de datos"""
     try:
         conn = get_db_connection()
         if conn is None:
+            st.error("No se pudo conectar a la base de datos para guardar el reclamo")
             return False
             
         with conn.cursor() as cur:
@@ -358,6 +320,12 @@ if not st.session_state.logueado:
                     time.sleep(1)
     st.stop()
 
+# --- INICIALIZAR LA BASE DE DATOS AL INICIAR ---
+with st.spinner("Inicializando base de datos..."):
+    if not init_db():
+        st.error("No se pudo inicializar la base de datos. Verifica la conexión.")
+        st.stop()
+
 # --- ESTILO VISUAL GLOBAL ---
 st.markdown("""
     <style>
@@ -383,18 +351,21 @@ st.title("📋 Fusion Reclamos App")
 # --- METRICAS RESUMEN ---
 try:
     df_reclamos = get_reclamos()
-    df_activos = df_reclamos[df_reclamos["estado"].isin(["Pendiente", "En curso"])]
-    
-    total = len(df_activos)
-    pendientes = len(df_activos[df_activos["estado"] == "Pendiente"])
-    en_curso = len(df_activos[df_activos["estado"] == "En curso"])
-    resueltos = len(df_reclamos[df_reclamos["estado"] == "Resuelto"])
+    if not df_reclamos.empty:
+        df_activos = df_reclamos[df_reclamos["estado"].isin(["Pendiente", "En curso"])]
+        
+        total = len(df_activos)
+        pendientes = len(df_activos[df_activos["estado"] == "Pendiente"])
+        en_curso = len(df_activos[df_activos["estado"] == "En curso"])
+        resueltos = len(df_reclamos[df_reclamos["estado"] == "Resuelto"])
 
-    colm1, colm2, colm3, colm4 = st.columns(4)
-    colm1.metric("📄 Total activos", total)
-    colm2.metric("🕒 Pendientes", pendientes)
-    colm3.metric("🔧 En curso", en_curso)
-    colm4.metric("✅ Resueltos", resueltos)
+        colm1, colm2, colm3, colm4 = st.columns(4)
+        colm1.metric("📄 Total activos", total)
+        colm2.metric("🕒 Pendientes", pendientes)
+        colm3.metric("🔧 En curso", en_curso)
+        colm4.metric("✅ Resueltos", resueltos)
+    else:
+        st.info("📊 No hay reclamos registrados aún para mostrar métricas")
 except Exception as e:
     st.error(f"Error al cargar métricas: {e}")
 
@@ -411,6 +382,8 @@ opcion = st.radio("📂 Ir a la sección:", opciones_menu, horizontal=True)
 # --- SECCIÓN 1: INICIO ---
 if opcion == "Inicio":
     st.subheader("📝 Cargar nuevo reclamo")
+    
+    # Obtener datos con manejo de errores
     df_clientes = get_clientes()
     df_reclamos = get_reclamos()
     
@@ -419,21 +392,28 @@ if opcion == "Inicio":
     formulario_bloqueado = False
 
     if nro_cliente:
-        match = df_clientes[df_clientes["nro_cliente"] == nro_cliente]
-        reclamos_activos = df_reclamos[
-            (df_reclamos["nro_cliente"] == nro_cliente) &
-            (df_reclamos["estado"].isin(["Pendiente", "En curso"]))
-        ]
-
-        if not match.empty:
-            cliente_existente = match.iloc[0]
-            st.success("✅ Cliente reconocido, datos auto-cargados.")
+        # Verificar si el DataFrame tiene datos y la columna existe
+        if not df_clientes.empty and 'nro_cliente' in df_clientes.columns:
+            match = df_clientes[df_clientes["nro_cliente"] == nro_cliente]
+            
+            if not match.empty:
+                cliente_existente = match.iloc[0]
+                st.success("✅ Cliente reconocido, datos auto-cargados.")
+            else:
+                st.info("ℹ️ Cliente no encontrado. Se cargará como Cliente Nuevo.")
         else:
-            st.info("ℹ️ Cliente no encontrado. Se cargará como Cliente Nuevo.")
+            st.info("ℹ️ No hay clientes registrados aún. Se cargará como Cliente Nuevo.")
+        
+        # Verificar reclamos activos
+        if not df_reclamos.empty and 'nro_cliente' in df_reclamos.columns:
+            reclamos_activos = df_reclamos[
+                (df_reclamos["nro_cliente"] == nro_cliente) &
+                (df_reclamos["estado"].isin(["Pendiente", "En curso"]))
+            ]
 
-        if not reclamos_activos.empty:
-            st.error("⚠️ Este cliente ya tiene un reclamo sin resolver. No se puede cargar uno nuevo hasta que se cierre el anterior.")
-            formulario_bloqueado = True
+            if not reclamos_activos.empty:
+                st.error("⚠️ Este cliente ya tiene un reclamo sin resolver. No se puede cargar uno nuevo hasta que se cierre el anterior.")
+                formulario_bloqueado = True
 
     if not formulario_bloqueado:
         with st.form("reclamo_formulario"):
@@ -441,11 +421,11 @@ if opcion == "Inicio":
 
             if cliente_existente is not None:
                 with col1:
-                    sector = st.text_input("🏩 Sector / Zona", value=cliente_existente["sector"])
-                    direccion = st.text_input("📍 Dirección", value=cliente_existente["direccion"])
+                    sector = st.text_input("🏩 Sector / Zona", value=cliente_existente.get("sector", ""))
+                    direccion = st.text_input("📍 Dirección", value=cliente_existente.get("direccion", ""))
                 with col2:
-                    nombre = st.text_input("👤 Nombre del Cliente", value=cliente_existente["nombre"])
-                    telefono = st.text_input("📞 Teléfono", value=cliente_existente["telefono"])
+                    nombre = st.text_input("👤 Nombre del Cliente", value=cliente_existente.get("nombre", ""))
+                    telefono = st.text_input("📞 Teléfono", value=cliente_existente.get("telefono", ""))
             else:
                 with col1:
                     sector = st.text_input("🏩 Sector / Zona", value="")
@@ -508,12 +488,14 @@ elif opcion == "Reclamos cargados":
         # Panel visual de tipos de reclamo
         st.markdown("### 🧾 Distribución por tipo de reclamo (solo activos)")
         df_activos = df[df["estado"].isin(["Pendiente", "En curso"])]
-        conteo_por_tipo = df_activos["tipo_reclamo"].value_counts().sort_index()
         
-        columnas = st.columns(4)
-        for i, (tipo, cant) in enumerate(conteo_por_tipo.items()):
-            with columnas[i % 4]:
-                st.metric(label=f"📌 {tipo}", value=f"{cant}")
+        if not df_activos.empty:
+            conteo_por_tipo = df_activos["tipo_reclamo"].value_counts().sort_index()
+            
+            columnas = st.columns(4)
+            for i, (tipo, cant) in enumerate(conteo_por_tipo.items()):
+                with columnas[i % 4]:
+                    st.metric(label=f"📌 {tipo}", value=f"{cant}")
         
         st.markdown("---")
         st.metric(label="📊 TOTAL DE RECLAMOS ACTIVOS", value=len(df_activos))
@@ -625,11 +607,11 @@ elif opcion == "Editar cliente":
 
                     if cliente_row:
                         with st.form("form_editar_cliente"):
-                            nuevo_sector = st.text_input("🏙️ Sector", value=cliente_row["sector"])
-                            nuevo_nombre = st.text_input("👤 Nombre", value=cliente_row["nombre"])
-                            nueva_direccion = st.text_input("📍 Dirección", value=cliente_row["direccion"])
-                            nuevo_telefono = st.text_input("📞 Teléfono", value=cliente_row["telefono"])
-                            nuevo_precinto = st.text_input("🔒 N° de Precinto", value=cliente_row["precinto"])
+                            nuevo_sector = st.text_input("🏙️ Sector", value=cliente_row["sector"] or "")
+                            nuevo_nombre = st.text_input("👤 Nombre", value=cliente_row["nombre"] or "")
+                            nueva_direccion = st.text_input("📍 Dirección", value=cliente_row["direccion"] or "")
+                            nuevo_telefono = st.text_input("📞 Teléfono", value=cliente_row["telefono"] or "")
+                            nuevo_precinto = st.text_input("🔒 N° de Precinto", value=cliente_row["precinto"] or "")
 
                             if st.form_submit_button("💾 Actualizar datos del cliente"):
                                 try:
@@ -900,7 +882,7 @@ elif opcion == "Cierre de Reclamos":
                         with col1:
                             nuevo_precinto = st.text_input(
                                 "🔒 Precinto", 
-                                value=row["precinto_cliente"],
+                                value=row.get("precinto_cliente", ""),
                                 key=f"precinto_{row['id']}"
                             )
                             
@@ -939,10 +921,3 @@ elif opcion == "Cierre de Reclamos":
             conn.close()
     except Exception as e:
         st.error(f"Error de conexión: {e}")
-
-# --- INICIALIZAR LA BASE DE DATOS AL INICIAR ---
-if verificar_variables_entorno():
-    with st.spinner("Inicializando base de datos..."):
-        if not init_db():
-            st.error("No se pudo inicializar la base de datos. Verifica la conexión.")
-            st.stop()
