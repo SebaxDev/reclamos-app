@@ -91,7 +91,7 @@ def get_db_connection():
     if not verificar_variables_entorno():
         return None
     
-    max_retries = 3  # Reducimos los reintentos para diagnóstico más rápido
+    max_retries = 3
     retry_delay = 2
     
     # Obtener credenciales
@@ -101,7 +101,6 @@ def get_db_connection():
         'user': os.getenv('DB_USER'),
         'password': os.getenv('DB_PASSWORD'),
         'port': int(os.getenv('DB_PORT', 5432)),
-        'cursor_factory': RealDictCursor,
         'sslmode': 'require',
         'connect_timeout': 15,
         'keepalives': 1,
@@ -114,15 +113,27 @@ def get_db_connection():
         try:
             st.sidebar.info(f"🔄 Intento de conexión {attempt + 1}/{max_retries}")
             
-            conn = psycopg2.connect(**db_config)
+            # Crear conexión SIN cursor_factory para la verificación inicial
+            conn = psycopg2.connect(**{k: v for k, v in db_config.items() if k != 'cursor_factory'})
             
-            # Verificación de conexión
+            # Verificación simple de conexión
             with conn.cursor() as cur:
-                cur.execute('SELECT version()')
-                version = cur.fetchone()
-                st.sidebar.success(f"✅ Conectado a PostgreSQL")
-                st.sidebar.info(f"📊 Versión: {version[0][:50]}...")
-                return conn
+                cur.execute('SELECT 1 as test')
+                result = cur.fetchone()
+                if result and result[0] == 1:
+                    st.sidebar.success(f"✅ Conectado a PostgreSQL")
+                    # Cerrar esta conexión de prueba
+                    conn.close()
+                    
+                    # Crear la conexión final con RealDictCursor
+                    final_conn = psycopg2.connect(
+                        **db_config,
+                        cursor_factory=RealDictCursor
+                    )
+                    return final_conn
+                else:
+                    conn.close()
+                    raise Exception("Verificación de conexión falló")
                     
         except psycopg2.OperationalError as e:
             error_msg = str(e)
@@ -153,8 +164,8 @@ def get_db_connection():
             time.sleep(retry_delay * (attempt + 1))
             
         except Exception as e:
-            error_msg = str(e) if str(e) else "Error desconocido"
-            st.sidebar.error(f"❌ Error inesperado: {error_msg}")
+            error_msg = str(e) if str(e) else "Error desconocido de conexión"
+            st.sidebar.error(f"❌ Error inesperado (intento {attempt + 1}): {error_msg}")
             
             if attempt == max_retries - 1:
                 st.error(f"❌ Error crítico de conexión: {error_msg}")
