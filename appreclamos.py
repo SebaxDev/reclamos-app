@@ -84,23 +84,23 @@ def verificar_variables_entorno():
     
     return True
 
-# --- CONEXIÓN MEJORADA A NEON.POSTGRESQL ---
+# --- CONEXIÓN SIMPLIFICADA A NEON.POSTGRESQL ---
 @st.cache_resource(ttl=3600, show_spinner="Conectando a la base de datos...")
 def get_db_connection():
-    # Verificar variables de entorno primero
     if not verificar_variables_entorno():
         return None
     
     max_retries = 3
     retry_delay = 2
     
-    # Obtener credenciales
+    # Configuración de conexión
     db_config = {
         'host': os.getenv('DB_HOST'),
         'database': os.getenv('DB_NAME'),
         'user': os.getenv('DB_USER'),
         'password': os.getenv('DB_PASSWORD'),
         'port': int(os.getenv('DB_PORT', 5432)),
+        'cursor_factory': RealDictCursor,
         'sslmode': 'require',
         'connect_timeout': 15,
         'keepalives': 1,
@@ -113,24 +113,16 @@ def get_db_connection():
         try:
             st.sidebar.info(f"🔄 Intento de conexión {attempt + 1}/{max_retries}")
             
-            # Crear conexión SIN cursor_factory para la verificación inicial
-            conn = psycopg2.connect(**{k: v for k, v in db_config.items() if k != 'cursor_factory'})
+            # Crear conexión directamente con RealDictCursor
+            conn = psycopg2.connect(**db_config)
             
             # Verificación simple de conexión
             with conn.cursor() as cur:
                 cur.execute('SELECT 1 as test')
                 result = cur.fetchone()
-                if result and result[0] == 1:
+                if result and result['test'] == 1:  # Usar clave del diccionario
                     st.sidebar.success(f"✅ Conectado a PostgreSQL")
-                    # Cerrar esta conexión de prueba
-                    conn.close()
-                    
-                    # Crear la conexión final con RealDictCursor
-                    final_conn = psycopg2.connect(
-                        **db_config,
-                        cursor_factory=RealDictCursor
-                    )
-                    return final_conn
+                    return conn
                 else:
                     conn.close()
                     raise Exception("Verificación de conexión falló")
