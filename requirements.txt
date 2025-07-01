@@ -1,6 +1,6 @@
 streamlit
+psycopg2-binary
 pandas
-gspread
-oauth2client
+python-dotenv
 reportlab
-pytz
+requests
