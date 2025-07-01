@@ -880,7 +880,7 @@ elif opcion == "Seguimiento técnico":
                     nuevo_estado = st.selectbox(
                         "⚙️ Cambiar estado",
                         ["Pendiente", "En curso", "Resuelto"],
-                        index=["Pendiente", "En curso", "Resuelto"].index(reclamo_actual["estado"]))
+                        index=["Pendiente", "En curso", "Resuelto"].index(reclamo_actual["estado"])
                     )
 
                     tecnicos_actuales = [t.strip() for t in reclamo_actual.get("tecnico", "").split(",") if t.strip()]
