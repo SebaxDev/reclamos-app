@@ -9,6 +9,31 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import time
 
+# Configuración de credenciales desde variables de entorno
+creds_dict = {
+    "type": os.environ.get("GCP_TYPE"),
+    "project_id": os.environ.get("GCP_PROJECT_ID"),
+    "private_key_id": os.environ.get("GCP_PRIVATE_KEY_ID"),
+    "private_key": os.environ.get("GCP_PRIVATE_KEY").replace('\\n', '\n'),
+    "client_email": os.environ.get("GCP_CLIENT_EMAIL"),
+    "client_id": os.environ.get("GCP_CLIENT_ID"),
+    "auth_uri": os.environ.get("GCP_AUTH_URI"),
+    "token_uri": os.environ.get("GCP_TOKEN_URI"),
+    "auth_provider_x509_cert_url": os.environ.get("GCP_AUTH_PROVIDER_CERT_URL"),
+    "client_x509_cert_url": os.environ.get("GCP_CLIENT_CERT_URL")
+}
+
+# Autenticación
+try:
+    creds = service_account.Credentials.from_service_account_info(creds_dict)
+    scope = ['https://www.googleapis.com/auth/spreadsheets']
+    creds = creds.with_scopes(scope)
+    client = gspread.authorize(creds)
+    sheet = client.open_by_key(os.environ.get("GOOGLE_SHEETS_ID"))
+    worksheet = sheet.worksheet("Fusion Reclamos App")  # Reemplaza con tu nombre de hoja
+except Exception as e:
+    st.error(f"🚨 Error al conectar con Google Sheets: {str(e)}")
+
 # =============================================
 # CONFIGURACIÓN INICIAL
 # =============================================
