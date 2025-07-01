@@ -877,11 +877,20 @@ elif opcion == "Seguimiento técnico":
                     st.write(f"🔒 Precinto: {reclamo_actual.get('precinto', '')}")
                     st.write(f"📄 Detalles: {reclamo_actual['detalles']}")
 
+                    # --- SOLUCIÓN: Verificar y normalizar el estado ---
+                    estado_actual = reclamo_actual.get("estado", "Pendiente").strip()
+                    opciones_estado = ["Pendiente", "En curso", "Resuelto"]
+
+                    if estado_actual not in opciones_estado:
+                        st.error(f"❌ Estado inválido: '{estado_actual}'. Debe ser 'Pendiente', 'En curso' o 'Resuelto'.")
+                        st.stop()
+
                     nuevo_estado = st.selectbox(
                         "⚙️ Cambiar estado",
-                        ["Pendiente", "En curso", "Resuelto"],
-                        index=["Pendiente", "En curso", "Resuelto"].index(reclamo_actual["estado"])
+                        opciones_estado,
+                        index=opciones_estado.index(estado_actual)
                     )
+                    # --- FIN DE SOLUCIÓN ---
 
                     tecnicos_actuales = [t.strip() for t in reclamo_actual.get("tecnico", "").split(",") if t.strip()]
                     nuevos_tecnicos = st.multiselect(
