@@ -1,3 +1,5 @@
+extra-streamlit-components==0.1.80
+streamlit-extras==0.7.5
 streamlit==1.33.0
 psycopg2-binary==2.9.9
 pandas==2.2.1
@@ -5,5 +7,3 @@ python-dotenv==1.0.1
 pytz==2024.1
 reportlab==4.1.0
 requests==2.31.0
-extra-streamlit-components==0.1.80
-streamlit-extras==0.7.5
