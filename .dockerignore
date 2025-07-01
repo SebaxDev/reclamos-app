@@ -1,0 +1,6 @@
+# flyctl launch added from .gitignore
+**\appreclamos.json
+**\.streamlit\secrets.toml
+**\__pycache__
+**\*.pyc
+fly.toml
