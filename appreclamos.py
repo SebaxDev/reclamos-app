@@ -16,20 +16,20 @@ from psycopg2.extras import RealDictCursor
 # Cargar variables de entorno al inicio
 load_dotenv()
 
-# Configuraci√≥n de p√°gina mejorada
+# Configuraci®Æn de p®¢gina mejorada
 st.set_page_config(
     page_title="Fusion Reclamos App",
-    page_icon="üìã",
+    page_icon="??",
     layout="centered",
     initial_sidebar_state="collapsed",
     menu_items={
         'Get Help': 'https://www.google.com',
         'Report a bug': None,
-        'About': "### App de Gesti√≥n de Reclamos v2.0\nSistema para registro y seguimiento de reclamos t√©cnicos"
+        'About': "### App de Gesti®Æn de Reclamos v2.0\nSistema para registro y seguimiento de reclamos t®¶cnicos"
     }
 )
 
-# --- CONFIGURACI√ìN PARA EVITAR QUE LA APP SE DUERMA EN RENDER ---
+# --- CONFIGURACI®ÆN PARA EVITAR QUE LA APP SE DUERMA EN RENDER ---
 def keep_alive():
     while True:
         try:
@@ -45,9 +45,9 @@ def keep_alive():
 if 'RENDER' in os.environ:
     threading.Thread(target=keep_alive, daemon=True).start()
 
-# --- VERIFICACI√ìN SILENCIOSA DE VARIABLES DE ENTORNO ---
+# --- VERIFICACI®ÆN SILENCIOSA DE VARIABLES DE ENTORNO ---
 def verificar_variables_entorno():
-    """Verifica que todas las variables de entorno necesarias est√©n configuradas"""
+    """Verifica que todas las variables de entorno necesarias est®¶n configuradas"""
     variables_requeridas = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD', 'DB_PORT']
     variables_faltantes = []
     
@@ -58,7 +58,7 @@ def verificar_variables_entorno():
     
     if variables_faltantes:
         st.error(f"""
-        üîß **Configuraci√≥n requerida:**
+        ?? **Configuraci®Æn requerida:**
         
         Necesitas crear un archivo `.env` con las siguientes variables:
         {', '.join(variables_faltantes)}
@@ -66,16 +66,16 @@ def verificar_variables_entorno():
         **Para obtener estas credenciales:**
         1. Ve a [Neon Console](https://console.neon.tech/)
         2. Selecciona tu proyecto
-        3. Ve a la secci√≥n "Connection Details"
+        3. Ve a la secci®Æn "Connection Details"
         4. Copia los valores correspondientes
         """)
         return False
     
     return True
 
-# --- CONEXI√ìN OPTIMIZADA CON MEJOR MANEJO DE ERRORES ---
+# --- CONEXI®ÆN OPTIMIZADA CON MEJOR MANEJO DE ERRORES ---
 def get_db_connection():
-    """Crear una nueva conexi√≥n a la base de datos optimizada"""
+    """Crear una nueva conexi®Æn a la base de datos optimizada"""
     if not verificar_variables_entorno():
         return None
     
@@ -95,7 +95,7 @@ def get_db_connection():
             keepalives_count=3
         )
         
-        # Verificaci√≥n r√°pida
+        # Verificaci®Æn r®¢pida
         with conn.cursor() as cur:
             cur.execute('SELECT 1')
             if cur.fetchone():
@@ -105,16 +105,16 @@ def get_db_connection():
         return None
                 
     except Exception as e:
-        st.error(f"Error de conexi√≥n a la base de datos: {str(e)}")
+        st.error(f"Error de conexi®Æn a la base de datos: {str(e)}")
         return None
 
-# --- INICIALIZACI√ìN DE LA BASE DE DATOS ---
+# --- INICIALIZACI®ÆN DE LA BASE DE DATOS ---
 def init_db():
     """Inicializar las tablas de la base de datos"""
     try:
         conn = get_db_connection()
         if conn is None:
-            st.error("No se pudo conectar a la base de datos para inicializaci√≥n")
+            st.error("No se pudo conectar a la base de datos para inicializaci®Æn")
             return False
         
         with conn.cursor() as cur:
@@ -254,27 +254,27 @@ if "logueado" not in st.session_state:
 if "usuario_actual" not in st.session_state:
     st.session_state.usuario_actual = ""
 
-# Verificar configuraci√≥n antes del login
+# Verificar configuraci®Æn antes del login
 if not verificar_variables_entorno():
     st.stop()
 
 if not st.session_state.logueado:
-    st.title("üîê Iniciar sesi√≥n")
+    st.title("?? Iniciar sesi®Æn")
     
     with st.form("login_formulario"):
         usuario = st.text_input("Usuario")
-        password = st.text_input("Contrase√±a", type="password")
+        password = st.text_input("Contrase?a", type="password")
         enviar = st.form_submit_button("Ingresar")
 
         if enviar:
             if not usuario or not password:
-                st.error("‚ù?Por favor completa todos los campos")
+                st.error("? Por favor completa todos los campos")
             else:
                 with st.spinner("Verificando credenciales..."):
                     try:
                         conn = get_db_connection()
                         if conn is None:
-                            st.error("üî¥ No se pudo conectar a la base de datos.")
+                            st.error("?? No se pudo conectar a la base de datos.")
                         else:
                             try:
                                 with conn.cursor() as cur:
@@ -286,20 +286,20 @@ if not st.session_state.logueado:
                                     if resultado:
                                         st.session_state.logueado = True
                                         st.session_state.usuario_actual = usuario
-                                        st.success("‚ú?Acceso concedido")
+                                        st.success("? Acceso concedido")
                                         time.sleep(0.5)
                                         st.rerun()
                                     else:
-                                        st.error("‚ù?Usuario o contrase√±a incorrectos")
+                                        st.error("? Usuario o contrase?a incorrectos")
                             finally:
                                 conn.close()
                     except Exception as e:
-                        st.error(f"‚ö†Ô∏è Error durante el login: {str(e)}")
+                        st.error(f"?? Error durante el login: {str(e)}")
     st.stop()
 
 # --- INICIALIZAR LA BASE DE DATOS AL INICIAR ---
 if not init_db():
-    st.error("No se pudo inicializar la base de datos. Verifica la conexi√≥n.")
+    st.error("No se pudo inicializar la base de datos. Verifica la conexi®Æn.")
     st.stop()
 
 # --- ESTILO VISUAL MEJORADO ---
@@ -335,7 +335,7 @@ st.markdown("""
         border-color: #0a58ca;
     }
     
-    /* Tarjetas de m√©tricas */
+    /* Tarjetas de m®¶tricas */
     .metric-container {
         background: #f8f9fa;
         border-radius: 10px;
@@ -350,7 +350,7 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
-    /* T√≠tulos m√°s limpios */
+    /* T®™tulos m®¢s limpios */
     h1, h2, h3, h4, h5, h6 {
         color: #212529;
     }
@@ -377,13 +377,13 @@ st.markdown("""
         border-radius: 8px;
     }
     
-    /* Contenedores de expansi√≥n */
+    /* Contenedores de expansi®Æn */
     .stExpander {
         border-radius: 8px;
         border: 1px solid #dee2e6;
     }
     
-    /* Mejoras para m√≥viles */
+    /* Mejoras para m®Æviles */
     @media (max-width: 768px) {
         .block-container {
             padding: 1rem;
@@ -392,12 +392,12 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- LISTA DE T√âCNICOS DISPONIBLES ---
+# --- LISTA DE T®¶CNICOS DISPONIBLES ---
 tecnicos_disponibles = ["Braian", "Conejo", "Juan", "Junior", "Maxi", "Ramon", "Roque", "Viki", "Oficina", "Base"]
 
-# --- T√çTULO Y DASHBOARD ---
-st.title("üìã Fusion Reclamos App")
-st.caption(f"üë§ Usuario: {st.session_state.usuario_actual}")
+# --- T®™TULO Y DASHBOARD ---
+st.title("?? Fusion Reclamos App")
+st.caption(f"?? Usuario: {st.session_state.usuario_actual}")
 
 # --- METRICAS RESUMEN OPTIMIZADAS ---
 try:
@@ -412,39 +412,39 @@ try:
 
         colm1, colm2, colm3, colm4 = st.columns(4)
         with colm1:
-            st.metric("üìÑ Total activos", total, help="Reclamos pendientes + en curso")
+            st.metric("?? Total activos", total, help="Reclamos pendientes + en curso")
         with colm2:
-            st.metric("üïí Pendientes", pendientes, help="Reclamos sin asignar")
+            st.metric("?? Pendientes", pendientes, help="Reclamos sin asignar")
         with colm3:
-            st.metric("üîß En curso", en_curso, help="Reclamos en proceso")
+            st.metric("?? En curso", en_curso, help="Reclamos en proceso")
         with colm4:
-            st.metric("‚ú?Resueltos", resueltos, help="Reclamos finalizados")
+            st.metric("? Resueltos", resueltos, help="Reclamos finalizados")
     else:
-        st.info("üìä No hay reclamos registrados a√∫n")
+        st.info("?? No hay reclamos registrados a®≤n")
 except Exception as e:
-    st.error(f"‚ö†Ô∏è Error al cargar m√©tricas: {str(e)}")
+    st.error(f"?? Error al cargar m®¶tricas: {str(e)}")
 
 st.divider()
 
-# --- MEN√ö DE NAVEGACI√ìN MEJORADO ---
+# --- MEN®≤ DE NAVEGACI®ÆN MEJORADO ---
 opciones_menu = [
     "Inicio", "Reclamos cargados", "Historial por cliente", 
-    "Editar cliente", "Imprimir reclamos", "Seguimiento t√©cnico", 
+    "Editar cliente", "Imprimir reclamos", "Seguimiento t®¶cnico", 
     "Cierre de Reclamos"
 ]
-opcion = st.radio("üìÇ Ir a la secci√≥n:", opciones_menu, horizontal=True, label_visibility="collapsed")
+opcion = st.radio("?? Ir a la secci®Æn:", opciones_menu, horizontal=True, label_visibility="collapsed")
 
 st.divider()
 
-# --- SECCI√ìN 1: INICIO ---
+# --- SECCI®ÆN 1: INICIO ---
 if opcion == "Inicio":
-    st.subheader("üìù Cargar nuevo reclamo")
+    st.subheader("?? Cargar nuevo reclamo")
     
     # Obtener datos
     df_clientes = get_clientes()
     df_reclamos = get_reclamos()
     
-    nro_cliente = st.text_input("üî¢ N¬∞ de Cliente", help="Ingrese el n√∫mero de cliente").strip()
+    nro_cliente = st.text_input("?? N°„ de Cliente", help="Ingrese el n®≤mero de cliente").strip()
     cliente_existente = None
     formulario_bloqueado = False
 
@@ -455,11 +455,11 @@ if opcion == "Inicio":
             
             if not match.empty:
                 cliente_existente = match.iloc[0]
-                st.success("‚ú?Cliente reconocido, datos auto-cargados.")
+                st.success("? Cliente reconocido, datos auto-cargados.")
             else:
-                st.info("‚ÑπÔ∏è Cliente no encontrado. Se cargar√° como Cliente Nuevo.")
+                st.info("?? Cliente no encontrado. Se cargar®¢ como Cliente Nuevo.")
         else:
-            st.info("‚ÑπÔ∏è No hay clientes registrados a√∫n. Se cargar√° como Cliente Nuevo.")
+            st.info("?? No hay clientes registrados a®≤n. Se cargar®¢ como Cliente Nuevo.")
         
         # Verificar reclamos activos
         if not df_reclamos.empty and 'nro_cliente' in df_reclamos.columns:
@@ -469,7 +469,7 @@ if opcion == "Inicio":
             ]
 
             if not reclamos_activos.empty:
-                st.error("‚ö†Ô∏è Este cliente ya tiene un reclamo sin resolver. No se puede cargar uno nuevo hasta que se cierre el anterior.")
+                st.error("?? Este cliente ya tiene un reclamo sin resolver. No se puede cargar uno nuevo hasta que se cierre el anterior.")
                 formulario_bloqueado = True
 
     if not formulario_bloqueado:
@@ -478,38 +478,38 @@ if opcion == "Inicio":
 
             if cliente_existente is not None:
                 with col1:
-                    sector = st.text_input("üè© Sector / Zona", value=cliente_existente.get("sector", ""))
-                    direccion = st.text_input("üìç Direcci√≥n", value=cliente_existente.get("direccion", ""))
+                    sector = st.text_input("?? Sector / Zona", value=cliente_existente.get("sector", ""))
+                    direccion = st.text_input("?? Direcci®Æn", value=cliente_existente.get("direccion", ""))
                 with col2:
-                    nombre = st.text_input("üë§ Nombre del Cliente", value=cliente_existente.get("nombre", ""))
-                    telefono = st.text_input("üìû Tel√©fono", value=cliente_existente.get("telefono", ""))
+                    nombre = st.text_input("?? Nombre del Cliente", value=cliente_existente.get("nombre", ""))
+                    telefono = st.text_input("?? Tel®¶fono", value=cliente_existente.get("telefono", ""))
             else:
                 with col1:
-                    sector = st.text_input("üè© Sector / Zona", value="")
-                    direccion = st.text_input("üìç Direcci√≥n", value="")
+                    sector = st.text_input("?? Sector / Zona", value="")
+                    direccion = st.text_input("?? Direcci®Æn", value="")
                 with col2:
-                    nombre = st.text_input("üë§ Nombre del Cliente", value="")
-                    telefono = st.text_input("üìû Tel√©fono", value="")
+                    nombre = st.text_input("?? Nombre del Cliente", value="")
+                    telefono = st.text_input("?? Tel®¶fono", value="")
 
-            tipo_reclamo = st.selectbox("üìå Tipo de Reclamo", [
+            tipo_reclamo = st.selectbox("?? Tipo de Reclamo", [
                 "Conexion C+I", "Conexion Cable", "Conexion Internet", "Suma Internet",
-                "Suma Cable", "Reconexion", "Sin Se√±al Ambos", "Sin Se√±al Cable",
-                "Sin Se√±al Internet", "Sintonia", "Interferencia", "Traslado",
+                "Suma Cable", "Reconexion", "Sin Se?al Ambos", "Sin Se?al Cable",
+                "Sin Se?al Internet", "Sintonia", "Interferencia", "Traslado",
                 "Extension x2", "Extension x3", "Extension x4", "Cambio de Ficha",
                 "Cambio de Equipo", "Reclamo", "Desconexion a Pedido"
             ], help="Seleccione el tipo de reclamo")
 
-            detalles = st.text_area("üìù Detalles del Reclamo", help="Describa el problema en detalle")
-            precinto = st.text_input("üîí N¬∞ de Precinto (opcional)", value=cliente_existente.get("precinto", "") if cliente_existente else "")
-            atendido_por = st.text_input("üë§ Atendido por", help="Nombre de quien registra el reclamo")
+            detalles = st.text_area("?? Detalles del Reclamo", help="Describa el problema en detalle")
+            precinto = st.text_input("?? N°„ de Precinto (opcional)", value=cliente_existente.get("precinto", "") if cliente_existente else "")
+            atendido_por = st.text_input("?? Atendido por", help="Nombre de quien registra el reclamo")
 
-            enviado = st.form_submit_button("‚ú?Guardar Reclamo", use_container_width=True)
+            enviado = st.form_submit_button("? Guardar Reclamo", use_container_width=True)
 
         if enviado:
             if not nro_cliente:
-                st.error("‚ö†Ô∏è Debes ingresar un n√∫mero de cliente.")
+                st.error("?? Debes ingresar un n®≤mero de cliente.")
             elif not atendido_por.strip():
-                st.error("‚ö†Ô∏è El campo 'Atendido por' es obligatorio.")
+                st.error("?? El campo 'Atendido por' es obligatorio.")
             else:
                 fecha_hora = datetime.now(pytz.timezone("America/Argentina/Buenos_Aires"))
                 fila_reclamo = [
@@ -527,24 +527,24 @@ if opcion == "Inicio":
                 ]
                 
                 if guardar_reclamo(fila_reclamo):
-                    st.success("‚ú?Reclamo guardado correctamente.")
+                    st.success("? Reclamo guardado correctamente.")
                     if cliente_existente is None:
-                        st.info("üóÇÔ∏?Nuevo cliente agregado a la base de datos.")
+                        st.info("??? Nuevo cliente agregado a la base de datos.")
                     time.sleep(1)
                     st.rerun()
 
-# --- SECCI√ìN 2: RECLAMOS CARGADOS ---
+# --- SECCI®ÆN 2: RECLAMOS CARGADOS ---
 elif opcion == "Reclamos cargados":
-    st.subheader("üìä Reclamos cargados")
+    st.subheader("?? Reclamos cargados")
     try:
         df = get_reclamos()
         
         if df.empty:
-            st.info("No hay reclamos registrados a√∫n.")
+            st.info("No hay reclamos registrados a®≤n.")
             st.stop()
             
         # Panel visual de tipos de reclamo
-        st.markdown("### üßæ Distribuci√≥n por tipo de reclamo (solo activos)")
+        st.markdown("### ?? Distribuci®Æn por tipo de reclamo (solo activos)")
         df_activos = df[df["estado"].isin(["Pendiente", "En curso"])]
         
         if not df_activos.empty:
@@ -553,20 +553,20 @@ elif opcion == "Reclamos cargados":
             columnas = st.columns(4)
             for i, (tipo, cant) in enumerate(conteo_por_tipo.items()):
                 with columnas[i % 4]:
-                    st.metric(label=f"üìå {tipo}", value=f"{cant}")
+                    st.metric(label=f"?? {tipo}", value=f"{cant}")
         
         st.markdown("---")
-        st.metric(label="üìä TOTAL DE RECLAMOS ACTIVOS", value=len(df_activos))
+        st.metric(label="?? TOTAL DE RECLAMOS ACTIVOS", value=len(df_activos))
         st.divider()
 
         # Filtros
         col1, col2, col3 = st.columns(3)
         with col1:
-            filtro_estado = st.selectbox("üîé Filtrar por estado", ["Todos"] + sorted(df["estado"].unique()))
+            filtro_estado = st.selectbox("?? Filtrar por estado", ["Todos"] + sorted(df["estado"].unique()))
         with col2:
-            filtro_sector = st.selectbox("üèôÔ∏?Filtrar por sector", ["Todos"] + sorted(df["sector"].unique()))
+            filtro_sector = st.selectbox("??? Filtrar por sector", ["Todos"] + sorted(df["sector"].unique()))
         with col3:
-            filtro_tipo = st.selectbox("üìå Filtrar por tipo", ["Todos"] + sorted(df["tipo_reclamo"].unique()))
+            filtro_tipo = st.selectbox("?? Filtrar por tipo", ["Todos"] + sorted(df["tipo_reclamo"].unique()))
 
         if filtro_estado != "Todos":
             df = df[df["estado"] == filtro_estado]
@@ -576,7 +576,7 @@ elif opcion == "Reclamos cargados":
             df = df[df["tipo_reclamo"] == filtro_tipo]
 
         # Editor de datos
-        st.markdown("### üìù Editar reclamos")
+        st.markdown("### ?? Editar reclamos")
         edited_df = st.data_editor(
             df,
             use_container_width=True,
@@ -586,18 +586,18 @@ elif opcion == "Reclamos cargados":
                     options=["Pendiente", "En curso", "Resuelto"],
                     help="Cambiar estado del reclamo"
                 ),
-                "tecnico": st.column_config.TextColumn("T√©cnico asignado", help="Asignar t√©cnico(s)"),
-                "precinto": st.column_config.TextColumn("N¬∞ de Precinto", help="Actualizar precinto")
+                "tecnico": st.column_config.TextColumn("T®¶cnico asignado", help="Asignar t®¶cnico(s)"),
+                "precinto": st.column_config.TextColumn("N°„ de Precinto", help="Actualizar precinto")
             },
             hide_index=True,
             key="editor_reclamos"
         )
 
-        if st.button("üíæ Guardar cambios", use_container_width=True, key="guardar_cambios_reclamos"):
+        if st.button("?? Guardar cambios", use_container_width=True, key="guardar_cambios_reclamos"):
             try:
                 conn = get_db_connection()
                 if conn is None:
-                    st.error("Error de conexi√≥n con la base de datos")
+                    st.error("Error de conexi®Æn con la base de datos")
                 else:
                     try:
                         with conn.cursor() as cur:
@@ -616,27 +616,27 @@ elif opcion == "Reclamos cargados":
                                 ))
                         
                         conn.commit()
-                        st.success("‚ú?Cambios guardados correctamente.")
+                        st.success("? Cambios guardados correctamente.")
                         time.sleep(1)
                         st.rerun()
                     finally:
                         conn.close()
             except Exception as e:
-                st.error(f"‚ù?Error al guardar cambios: {str(e)}")
+                st.error(f"? Error al guardar cambios: {str(e)}")
                 
     except Exception as e:
         st.error(f"Error al cargar reclamos: {str(e)}")
 
-# --- SECCI√ìN 3: HISTORIAL POR CLIENTE ---
+# --- SECCI®ÆN 3: HISTORIAL POR CLIENTE ---
 elif opcion == "Historial por cliente":
-    st.subheader("üìú Historial de reclamos por cliente")
-    historial_cliente = st.text_input("üîç Ingres√° N¬∞ de Cliente para ver su historial", help="Ingrese el n√∫mero de cliente").strip()
+    st.subheader("?? Historial de reclamos por cliente")
+    historial_cliente = st.text_input("?? Ingres®¢ N°„ de Cliente para ver su historial", help="Ingrese el n®≤mero de cliente").strip()
 
     if historial_cliente:
         try:
             conn = get_db_connection()
             if conn is None:
-                st.error("Error de conexi√≥n con la base de datos")
+                st.error("Error de conexi®Æn con la base de datos")
                 st.stop()
             
             try:
@@ -648,25 +648,25 @@ elif opcion == "Historial por cliente":
                 """, conn, params=(historial_cliente,))
                 
                 if not historial.empty:
-                    st.success(f"üîé Se encontraron {len(historial)} reclamos para el cliente {historial_cliente}.")
+                    st.success(f"?? Se encontraron {len(historial)} reclamos para el cliente {historial_cliente}.")
                     st.dataframe(historial, use_container_width=True, hide_index=True)
                 else:
-                    st.info("‚ù?Este cliente no tiene reclamos registrados.")
+                    st.info("? Este cliente no tiene reclamos registrados.")
             finally:
                 conn.close()
         except Exception as e:
             st.error(f"Error al cargar historial: {str(e)}")
 
-# --- SECCI√ìN 4: EDITAR CLIENTE ---
+# --- SECCI®ÆN 4: EDITAR CLIENTE ---
 elif opcion == "Editar cliente":
-    st.subheader("üõ†Ô∏?Editar datos de un cliente")
-    cliente_editar = st.text_input("üîé Ingres√° N¬∞ de Cliente a editar", help="Ingrese el n√∫mero de cliente").strip()
+    st.subheader("??? Editar datos de un cliente")
+    cliente_editar = st.text_input("?? Ingres®¢ N°„ de Cliente a editar", help="Ingrese el n®≤mero de cliente").strip()
 
     if cliente_editar:
         try:
             conn = get_db_connection()
             if conn is None:
-                st.error("Error de conexi√≥n con la base de datos")
+                st.error("Error de conexi®Æn con la base de datos")
                 st.stop()
             
             try:
@@ -676,13 +676,13 @@ elif opcion == "Editar cliente":
 
                     if cliente_row:
                         with st.form("form_editar_cliente"):
-                            nuevo_sector = st.text_input("üèôÔ∏?Sector", value=cliente_row["sector"] or "")
-                            nuevo_nombre = st.text_input("üë§ Nombre", value=cliente_row["nombre"] or "")
-                            nueva_direccion = st.text_input("üìç Direcci√≥n", value=cliente_row["direccion"] or "")
-                            nuevo_telefono = st.text_input("üìû Tel√©fono", value=cliente_row["telefono"] or "")
-                            nuevo_precinto = st.text_input("üîí N¬∞ de Precinto", value=cliente_row["precinto"] or "")
+                            nuevo_sector = st.text_input("??? Sector", value=cliente_row["sector"] or "")
+                            nuevo_nombre = st.text_input("?? Nombre", value=cliente_row["nombre"] or "")
+                            nueva_direccion = st.text_input("?? Direcci®Æn", value=cliente_row["direccion"] or "")
+                            nuevo_telefono = st.text_input("?? Tel®¶fono", value=cliente_row["telefono"] or "")
+                            nuevo_precinto = st.text_input("?? N°„ de Precinto", value=cliente_row["precinto"] or "")
 
-                            if st.form_submit_button("üíæ Actualizar datos del cliente", use_container_width=True):
+                            if st.form_submit_button("?? Actualizar datos del cliente", use_container_width=True):
                                 try:
                                     cur.execute("""
                                         UPDATE clientes 
@@ -698,37 +698,37 @@ elif opcion == "Editar cliente":
                                         cliente_editar
                                     ))
                                     conn.commit()
-                                    st.success("‚ú?Cliente actualizado correctamente.")
+                                    st.success("? Cliente actualizado correctamente.")
                                     time.sleep(1)
                                     st.rerun()
                                 except Exception as e:
-                                    st.error(f"‚ù?Error al actualizar: {str(e)}")
+                                    st.error(f"? Error al actualizar: {str(e)}")
                     else:
-                        st.warning("‚ö†Ô∏è Cliente no encontrado.")
+                        st.warning("?? Cliente no encontrado.")
             finally:
                 conn.close()
         except Exception as e:
-            st.error(f"Error de conexi√≥n: {str(e)}")
+            st.error(f"Error de conexi®Æn: {str(e)}")
 
     # Formulario para nuevo cliente
     st.divider()
-    st.subheader("üÜï Cargar nuevo cliente")
+    st.subheader("?? Cargar nuevo cliente")
     with st.form("form_nuevo_cliente"):
-        nuevo_nro = st.text_input("üî¢ N¬∞ de Cliente (nuevo)", help="N√∫mero √∫nico de cliente").strip()
-        nuevo_sector = st.text_input("üèôÔ∏?Sector", help="Zona o sector del cliente")
-        nuevo_nombre = st.text_input("üë§ Nombre", help="Nombre completo del cliente")
-        nueva_direccion = st.text_input("üìç Direcci√≥n", help="Direcci√≥n completa")
-        nuevo_telefono = st.text_input("üìû Tel√©fono", help="Tel√©fono de contacto")
-        nuevo_precinto = st.text_input("üîí N¬∞ de Precinto (opcional)", help="N√∫mero de precinto si aplica")
+        nuevo_nro = st.text_input("?? N°„ de Cliente (nuevo)", help="N®≤mero ®≤nico de cliente").strip()
+        nuevo_sector = st.text_input("??? Sector", help="Zona o sector del cliente")
+        nuevo_nombre = st.text_input("?? Nombre", help="Nombre completo del cliente")
+        nueva_direccion = st.text_input("?? Direcci®Æn", help="Direcci®Æn completa")
+        nuevo_telefono = st.text_input("?? Tel®¶fono", help="Tel®¶fono de contacto")
+        nuevo_precinto = st.text_input("?? N°„ de Precinto (opcional)", help="N®≤mero de precinto si aplica")
 
-        if st.form_submit_button("üíæ Guardar nuevo cliente", use_container_width=True):
+        if st.form_submit_button("?? Guardar nuevo cliente", use_container_width=True):
             if not nuevo_nro or not nuevo_nombre:
-                st.error("‚ö†Ô∏è Deb√©s ingresar al menos el N¬∞ de cliente y el nombre.")
+                st.error("?? Deb®¶s ingresar al menos el N°„ de cliente y el nombre.")
             else:
                 try:
                     conn = get_db_connection()
                     if conn is None:
-                        st.error("Error de conexi√≥n con la base de datos")
+                        st.error("Error de conexi®Æn con la base de datos")
                     else:
                         try:
                             with conn.cursor() as cur:
@@ -745,58 +745,58 @@ elif opcion == "Editar cliente":
                                     nuevo_precinto
                                 ))
                             conn.commit()
-                            st.success("‚ú?Nuevo cliente agregado correctamente.")
+                            st.success("? Nuevo cliente agregado correctamente.")
                             time.sleep(1)
                             st.rerun()
                         finally:
                             conn.close()
                 except psycopg2.errors.UniqueViolation:
-                    st.warning("‚ö†Ô∏è Este cliente ya existe.")
+                    st.warning("?? Este cliente ya existe.")
                 except Exception as e:
-                    st.error(f"‚ù?Error al guardar: {str(e)}")
+                    st.error(f"? Error al guardar: {str(e)}")
 
-# --- SECCI√ìN 5: IMPRESI√ìN ---
+# --- SECCI®ÆN 5: IMPRESI®ÆN ---
 elif opcion == "Imprimir reclamos":
-    st.subheader("üñ®Ô∏?Seleccionar reclamos para imprimir")
+    st.subheader("??? Seleccionar reclamos para imprimir")
     try:
         df = get_reclamos()
         
         if df.empty:
-            st.info("No hay reclamos registrados a√∫n.")
+            st.info("No hay reclamos registrados a®≤n.")
             st.stop()
             
-        st.info("üïí Reclamos pendientes de resoluci√≥n")
+        st.info("?? Reclamos pendientes de resoluci®Æn")
         df_pendientes = df[df["estado"] == "Pendiente"]
         if not df_pendientes.empty:
             st.dataframe(df_pendientes[["fecha_hora", "nro_cliente", "nombre", "tipo_reclamo", "tecnico"]], 
                         use_container_width=True, hide_index=True)
         else:
-            st.success("‚ú?No hay reclamos pendientes actualmente.")
+            st.success("? No hay reclamos pendientes actualmente.")
 
-        solo_pendientes = st.checkbox("üßæ Mostrar solo reclamos pendientes para imprimir")
+        solo_pendientes = st.checkbox("?? Mostrar solo reclamos pendientes para imprimir")
         if solo_pendientes:
             df = df[df["estado"] == "Pendiente"]
 
-        # Selecci√≥n por tipo
-        st.markdown("### üßæ Imprimir reclamos por tipo")
+        # Selecci®Æn por tipo
+        st.markdown("### ?? Imprimir reclamos por tipo")
         tipos_disponibles = sorted(df["tipo_reclamo"].unique())
-        tipos_seleccionados = st.multiselect("Seleccion√° tipos de reclamo a imprimir", tipos_disponibles)
+        tipos_seleccionados = st.multiselect("Seleccion®¢ tipos de reclamo a imprimir", tipos_disponibles)
 
         if tipos_seleccionados:
             df_filtrado = df[df["tipo_reclamo"].isin(tipos_seleccionados)]
-            st.info(f"üìå Mostrando {len(df_filtrado)} reclamos de los tipos seleccionados")
+            st.info(f"?? Mostrando {len(df_filtrado)} reclamos de los tipos seleccionados")
 
-        # Selecci√≥n manual
+        # Selecci®Æn manual
         selected = st.multiselect(
-            "Seleccion√° reclamos espec√≠ficos:",
+            "Seleccion®¢ reclamos espec®™ficos:",
             df.index,
             format_func=lambda x: f"{df.at[x, 'nro_cliente']} - {df.at[x, 'nombre']}"
         )
 
         # Generar PDF
-        if st.button("üìÑ Generar PDF", use_container_width=True):
+        if st.button("?? Generar PDF", use_container_width=True):
             if not selected and not tipos_seleccionados:
-                st.warning("Seleccion√° al menos un reclamo")
+                st.warning("Seleccion®¢ al menos un reclamo")
             else:
                 reclamos_a_imprimir = df.loc[selected] if selected else df_filtrado
                 
@@ -814,10 +814,10 @@ elif opcion == "Imprimir reclamos":
                     detalles = [
                         f"Fecha: {reclamo['fecha_hora']}",
                         f"Cliente: {reclamo['nombre']} ({reclamo['nro_cliente']})",
-                        f"Direcci√≥n: {reclamo['direccion']}",
+                        f"Direcci®Æn: {reclamo['direccion']}",
                         f"Tel: {reclamo['telefono']}",
                         f"Sector: {reclamo['sector']} | Precinto: {reclamo.get('precinto', '')}",
-                        f"T√©cnico: {reclamo.get('tecnico', '')}",
+                        f"T®¶cnico: {reclamo.get('tecnico', '')}",
                         f"Tipo: {reclamo['tipo_reclamo']}",
                         f"Detalles: {reclamo['detalles'][:100]}{'...' if len(reclamo['detalles']) > 100 else ''}"
                     ]
@@ -827,7 +827,7 @@ elif opcion == "Imprimir reclamos":
                         y -= 15
                     
                     y -= 10
-                    c.drawString(40, y, "Firma t√©cnico: _____________________________")
+                    c.drawString(40, y, "Firma t®¶cnico: _____________________________")
                     y -= 30
                     
                     if y < 100 and i < len(reclamos_a_imprimir) - 1:
@@ -838,7 +838,7 @@ elif opcion == "Imprimir reclamos":
                 buffer.seek(0)
                 
                 st.download_button(
-                    label="üì• Descargar PDF",
+                    label="?? Descargar PDF",
                     data=buffer,
                     file_name="reclamos.pdf",
                     mime="application/pdf",
@@ -847,16 +847,16 @@ elif opcion == "Imprimir reclamos":
     except Exception as e:
         st.error(f"Error al generar PDF: {str(e)}")
 
-# --- SECCI√ìN 6: SEGUIMIENTO T√âCNICO ---
-elif opcion == "Seguimiento t√©cnico":
-    st.subheader("üë∑ Seguimiento t√©cnico del reclamo")
-    cliente_input = st.text_input("üîç Ingres√° el N¬∞ de Cliente para actualizar su reclamo", help="Ingrese el n√∫mero de cliente").strip()
+# --- SECCI®ÆN 6: SEGUIMIENTO T®¶CNICO ---
+elif opcion == "Seguimiento t®¶cnico":
+    st.subheader("?? Seguimiento t®¶cnico del reclamo")
+    cliente_input = st.text_input("?? Ingres®¢ el N°„ de Cliente para actualizar su reclamo", help="Ingrese el n®≤mero de cliente").strip()
 
     if cliente_input:
         try:
             conn = get_db_connection()
             if conn is None:
-                st.error("Error de conexi√≥n con la base de datos")
+                st.error("Error de conexi®Æn con la base de datos")
                 st.stop()
             
             try:
@@ -871,29 +871,29 @@ elif opcion == "Seguimiento t√©cnico":
                 if not df_filtrado.empty:
                     reclamo_actual = df_filtrado.iloc[0]
                     
-                    st.info(f"üìÖ Reclamo registrado el {reclamo_actual['fecha_hora']}")
-                    st.write(f"üìå Tipo: **{reclamo_actual['tipo_reclamo']}**")
-                    st.write(f"üìç Direcci√≥n: {reclamo_actual['direccion']}")
-                    st.write(f"üîí Precinto: {reclamo_actual.get('precinto', '')}")
-                    st.write(f"üìÑ Detalles: {reclamo_actual['detalles']}")
+                    st.info(f"?? Reclamo registrado el {reclamo_actual['fecha_hora']}")
+                    st.write(f"?? Tipo: **{reclamo_actual['tipo_reclamo']}**")
+                    st.write(f"?? Direcci®Æn: {reclamo_actual['direccion']}")
+                    st.write(f"?? Precinto: {reclamo_actual.get('precinto', '')}")
+                    st.write(f"?? Detalles: {reclamo_actual['detalles']}")
 
                     nuevo_estado = st.selectbox(
-                        "‚öôÔ∏è Cambiar estado",
+                        "?? Cambiar estado",
                         ["Pendiente", "En curso", "Resuelto"],
-                        index=["Pendiente", "En curso", "Resuelto"].index(reclamo_actual["estado"])
+                        index=["Pendiente", "En curso", "Resuelto"].index(reclamo_actual["estado"]))
                     )
 
                     tecnicos_actuales = [t.strip() for t in reclamo_actual.get("tecnico", "").split(",") if t.strip()]
                     nuevos_tecnicos = st.multiselect(
-                        "üë∑ T√©cnicos asignados",
+                        "?? T®¶cnicos asignados",
                         tecnicos_disponibles,
                         default=[t for t in tecnicos_disponibles if t in tecnicos_actuales],
-                        help="Seleccione los t√©cnicos asignados"
+                        help="Seleccione los t®¶cnicos asignados"
                     )
 
-                    if st.button("üíæ Actualizar reclamo", use_container_width=True):
+                    if st.button("?? Actualizar reclamo", use_container_width=True):
                         if not nuevos_tecnicos and nuevo_estado != "Resuelto":
-                            st.warning("‚ö†Ô∏è Debes asignar al menos un t√©cnico para reclamos no resueltos")
+                            st.warning("?? Debes asignar al menos un t®¶cnico para reclamos no resueltos")
                         else:
                             try:
                                 with conn.cursor() as cur:
@@ -908,25 +908,25 @@ elif opcion == "Seguimiento t√©cnico":
                                         reclamo_actual["id"]
                                     ))
                                 conn.commit()
-                                st.success("‚ú?Reclamo actualizado correctamente.")
+                                st.success("? Reclamo actualizado correctamente.")
                                 time.sleep(1)
                                 st.rerun()
                             except Exception as e:
-                                st.error(f"‚ù?Error al actualizar: {str(e)}")
+                                st.error(f"? Error al actualizar: {str(e)}")
                 else:
-                    st.warning("‚ù?Este cliente no tiene reclamos pendientes o en curso.")
+                    st.warning("? Este cliente no tiene reclamos pendientes o en curso.")
             finally:
                 conn.close()
         except Exception as e:
             st.error(f"Error al conectar con la base de datos: {str(e)}")
 
-# --- SECCI√ìN 7: CIERRE DE RECLAMOS ---
+# --- SECCI®ÆN 7: CIERRE DE RECLAMOS ---
 elif opcion == "Cierre de Reclamos":
-    st.subheader("‚ú?Cierre de reclamos en curso")
+    st.subheader("? Cierre de reclamos en curso")
     try:
         conn = get_db_connection()
         if conn is None:
-            st.error("Error de conexi√≥n con la base de datos")
+            st.error("Error de conexi®Æn con la base de datos")
             st.stop()
         
         try:
@@ -938,11 +938,11 @@ elif opcion == "Cierre de Reclamos":
             """, conn)
             
             if en_curso.empty:
-                st.info("üì≠ No hay reclamos en curso en este momento.")
+                st.info("?? No hay reclamos en curso en este momento.")
             else:
-                # Filtrar por t√©cnico
+                # Filtrar por t®¶cnico
                 tecnicos_unicos = sorted(set(", ".join(en_curso["tecnico"].fillna("")).split(", ")))
-                tecnicos_seleccionados = st.multiselect("üë∑ Filtrar por t√©cnico asignado", tecnicos_unicos)
+                tecnicos_seleccionados = st.multiselect("?? Filtrar por t®¶cnico asignado", tecnicos_unicos)
                 
                 if tecnicos_seleccionados:
                     en_curso = en_curso[
@@ -963,13 +963,13 @@ elif opcion == "Cierre de Reclamos":
                         
                         with col1:
                             nuevo_precinto = st.text_input(
-                                "üîí Precinto", 
+                                "?? Precinto", 
                                 value=row.get("precinto_cliente", ""),
                                 key=f"precinto_{row['id']}"
                             )
                             
                         with col2:
-                            if st.button("‚ú?Marcar como Resuelto", key=f"resolver_{row['id']}", use_container_width=True):
+                            if st.button("? Marcar como Resuelto", key=f"resolver_{row['id']}", use_container_width=True):
                                 try:
                                     with conn.cursor() as cur:
                                         # Actualizar reclamo
@@ -983,7 +983,7 @@ elif opcion == "Cierre de Reclamos":
                                             row["id"]
                                         ))
                                         
-                                        # Actualizar precinto si cambi√≥
+                                        # Actualizar precinto si cambi®Æ
                                         if nuevo_precinto.strip():
                                             cur.execute("""
                                                 UPDATE clientes 
@@ -995,18 +995,18 @@ elif opcion == "Cierre de Reclamos":
                                             ))
                                         
                                     conn.commit()
-                                    st.success(f"üü¢ Reclamo de {row['nombre']} cerrado correctamente.")
+                                    st.success(f"?? Reclamo de {row['nombre']} cerrado correctamente.")
                                     time.sleep(1)
                                     st.rerun()
                                 except Exception as e:
-                                    st.error(f"‚ù?Error al cerrar reclamo: {str(e)}")
+                                    st.error(f"? Error al cerrar reclamo: {str(e)}")
         finally:
             conn.close()
     except Exception as e:
-        st.error(f"Error de conexi√≥n: {str(e)}")
+        st.error(f"Error de conexi®Æn: {str(e)}")
 
-# --- BOT√ìN DE LOGOUT ---
-if st.sidebar.button("üö™ Cerrar sesi√≥n", use_container_width=True):
+# --- BOT®ÆN DE LOGOUT ---
+if st.sidebar.button("?? Cerrar sesi®Æn", use_container_width=True):
     st.session_state.logueado = False
     st.session_state.usuario_actual = ""
     st.rerun()
