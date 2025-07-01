@@ -16,12 +16,17 @@ from psycopg2.extras import RealDictCursor
 # Cargar variables de entorno al inicio
 load_dotenv()
 
-# Configuración de página
+# Configuración de página mejorada
 st.set_page_config(
     page_title="Fusion Reclamos App",
     page_icon="📋",
-    layout="wide",
-    initial_sidebar_state="collapsed"  # Sidebar colapsado por defecto
+    layout="centered",  # Cambiado a centered para mejor visualización
+    initial_sidebar_state="collapsed",
+    menu_items={
+        'Get Help': 'https://www.google.com',
+        'Report a bug': None,
+        'About': "### App de Gestión de Reclamos v2.0\nSistema para registro y seguimiento de reclamos técnicos"
+    }
 )
 
 # --- CONFIGURACIÓN PARA EVITAR QUE LA APP SE DUERMA EN RENDER ---
@@ -279,24 +284,92 @@ if not init_db():
     st.error("No se pudo inicializar la base de datos. Verifica la conexión.")
     st.stop()
 
-# --- ESTILO VISUAL OPTIMIZADO ---
+# --- ESTILO VISUAL MEJORADO ---
 st.markdown("""
     <style>
+    /* Estilos generales */
     .block-container {
+        max-width: 1000px;
         padding-top: 1rem;
+        padding-bottom: 1rem;
     }
+    
+    /* Mejoras para los formularios */
+    .stTextInput input, .stTextArea textarea, .stSelectbox select {
+        border-radius: 8px !important;
+        border: 1px solid #ced4da !important;
+        padding: 8px 12px !important;
+    }
+    
+    /* Botones mejorados */
+    .stButton>button {
+        border-radius: 8px;
+        border: 1px solid #0d6efd;
+        background-color: #0d6efd;
+        color: white;
+        padding: 8px 16px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .stButton>button:hover {
+        background-color: #0b5ed7;
+        border-color: #0a58ca;
+    }
+    
+    /* Tarjetas de métricas */
+    .metric-container {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 15px;
+    }
+    
+    /* Mejoras para los dataframes */
+    .dataframe {
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    /* Títulos más limpios */
+    h1, h2, h3, h4, h5, h6 {
+        color: #212529;
+    }
+    
+    /* Separadores mejorados */
+    .stDivider {
+        margin: 1.5rem 0;
+    }
+    
+    /* Radio buttons horizontales */
     .stRadio > div {
         flex-direction: row;
         gap: 1rem;
+        align-items: center;
     }
+    
     .stRadio [role=radiogroup] {
         gap: 1rem;
+        align-items: center;
     }
-    .metric-container {
-        background: linear-gradient(90deg, #f8f9fa 0%, #e9ecef 100%);
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin: 0.5rem 0;
+    
+    /* Mensajes de alerta mejorados */
+    .stAlert {
+        border-radius: 8px;
+    }
+    
+    /* Contenedores de expansión */
+    .stExpander {
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+    }
+    
+    /* Mejoras para móviles */
+    @media (max-width: 768px) {
+        .block-container {
+            padding: 1rem;
+        }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -320,10 +393,14 @@ try:
         resueltos = len(df_reclamos[df_reclamos["estado"] == "Resuelto"])
 
         colm1, colm2, colm3, colm4 = st.columns(4)
-        colm1.metric("📄 Total activos", total)
-        colm2.metric("🕒 Pendientes", pendientes)
-        colm3.metric("🔧 En curso", en_curso)
-        colm4.metric("✅ Resueltos", resueltos)
+        with colm1:
+            st.metric("📄 Total activos", total, help="Reclamos pendientes + en curso")
+        with colm2:
+            st.metric("🕒 Pendientes", pendientes, help="Reclamos sin asignar")
+        with colm3:
+            st.metric("🔧 En curso", en_curso, help="Reclamos en proceso")
+        with colm4:
+            st.metric("✅ Resueltos", resueltos, help="Reclamos finalizados")
     else:
         st.info("📊 No hay reclamos registrados aún")
 except Exception:
@@ -331,13 +408,15 @@ except Exception:
 
 st.divider()
 
-# --- MENÚ DE NAVEGACIÓN ---
+# --- MENÚ DE NAVEGACIÓN MEJORADO ---
 opciones_menu = [
     "Inicio", "Reclamos cargados", "Historial por cliente", 
     "Editar cliente", "Imprimir reclamos", "Seguimiento técnico", 
     "Cierre de Reclamos"
 ]
-opcion = st.radio("📂 Ir a la sección:", opciones_menu, horizontal=True)
+opcion = st.radio("📂 Ir a la sección:", opciones_menu, horizontal=True, label_visibility="collapsed")
+
+st.divider()
 
 # --- SECCIÓN 1: INICIO ---
 if opcion == "Inicio":
@@ -347,7 +426,7 @@ if opcion == "Inicio":
     df_clientes = get_clientes()
     df_reclamos = get_reclamos()
     
-    nro_cliente = st.text_input("🔢 N° de Cliente").strip()
+    nro_cliente = st.text_input("🔢 N° de Cliente", help="Ingrese el número de cliente").strip()
     cliente_existente = None
     formulario_bloqueado = False
 
@@ -400,13 +479,13 @@ if opcion == "Inicio":
                 "Sin Señal Internet", "Sintonia", "Interferencia", "Traslado",
                 "Extension x2", "Extension x3", "Extension x4", "Cambio de Ficha",
                 "Cambio de Equipo", "Reclamo", "Desconexion a Pedido"
-            ])
+            ], help="Seleccione el tipo de reclamo")
 
-            detalles = st.text_area("📝 Detalles del Reclamo")
+            detalles = st.text_area("📝 Detalles del Reclamo", help="Describa el problema en detalle")
             precinto = st.text_input("🔒 N° de Precinto (opcional)", value=cliente_existente.get("precinto", "") if cliente_existente else "")
-            atendido_por = st.text_input("👤 Atendido por")
+            atendido_por = st.text_input("👤 Atendido por", help="Nombre de quien registra el reclamo")
 
-            enviado = st.form_submit_button("✅ Guardar Reclamo")
+            enviado = st.form_submit_button("✅ Guardar Reclamo", use_container_width=True)
 
         if enviado:
             if not nro_cliente:
@@ -479,20 +558,23 @@ elif opcion == "Reclamos cargados":
             df = df[df["tipo_reclamo"] == filtro_tipo]
 
         # Editor de datos
+        st.markdown("### 📝 Editar reclamos")
         edited_df = st.data_editor(
             df,
             use_container_width=True,
             column_config={
                 "estado": st.column_config.SelectboxColumn(
                     "Estado", 
-                    options=["Pendiente", "En curso", "Resuelto"]
+                    options=["Pendiente", "En curso", "Resuelto"],
+                    help="Cambiar estado del reclamo"
                 ),
-                "tecnico": st.column_config.TextColumn("Técnico asignado"),
-                "precinto": st.column_config.TextColumn("N° de Precinto")
-            }
+                "tecnico": st.column_config.TextColumn("Técnico asignado", help="Asignar técnico(s)"),
+                "precinto": st.column_config.TextColumn("N° de Precinto", help="Actualizar precinto")
+            },
+            hide_index=True
         )
 
-        if st.button("💾 Guardar cambios"):
+        if st.button("💾 Guardar cambios", use_container_width=True):
             try:
                 conn = get_db_connection()
                 if conn is None:
@@ -527,7 +609,7 @@ elif opcion == "Reclamos cargados":
 # --- SECCIÓN 3: HISTORIAL POR CLIENTE ---
 elif opcion == "Historial por cliente":
     st.subheader("📜 Historial de reclamos por cliente")
-    historial_cliente = st.text_input("🔍 Ingresá N° de Cliente para ver su historial").strip()
+    historial_cliente = st.text_input("🔍 Ingresá N° de Cliente para ver su historial", help="Ingrese el número de cliente").strip()
 
     if historial_cliente:
         try:
@@ -546,7 +628,7 @@ elif opcion == "Historial por cliente":
                 
                 if not historial.empty:
                     st.success(f"🔎 Se encontraron {len(historial)} reclamos para el cliente {historial_cliente}.")
-                    st.dataframe(historial, use_container_width=True)
+                    st.dataframe(historial, use_container_width=True, hide_index=True)
                 else:
                     st.info("❕ Este cliente no tiene reclamos registrados.")
         except Exception:
@@ -555,7 +637,7 @@ elif opcion == "Historial por cliente":
 # --- SECCIÓN 4: EDITAR CLIENTE ---
 elif opcion == "Editar cliente":
     st.subheader("🛠️ Editar datos de un cliente")
-    cliente_editar = st.text_input("🔎 Ingresá N° de Cliente a editar").strip()
+    cliente_editar = st.text_input("🔎 Ingresá N° de Cliente a editar", help="Ingrese el número de cliente").strip()
 
     if cliente_editar:
         try:
@@ -575,7 +657,7 @@ elif opcion == "Editar cliente":
                             nuevo_telefono = st.text_input("📞 Teléfono", value=cliente_row["telefono"] or "")
                             nuevo_precinto = st.text_input("🔒 N° de Precinto", value=cliente_row["precinto"] or "")
 
-                            if st.form_submit_button("💾 Actualizar datos del cliente"):
+                            if st.form_submit_button("💾 Actualizar datos del cliente", use_container_width=True):
                                 try:
                                     cur.execute("""
                                         UPDATE clientes 
@@ -602,17 +684,17 @@ elif opcion == "Editar cliente":
             st.error("Error de conexión")
 
     # Formulario para nuevo cliente
-    st.markdown("---")
+    st.divider()
     st.subheader("🆕 Cargar nuevo cliente")
     with st.form("form_nuevo_cliente"):
-        nuevo_nro = st.text_input("🔢 N° de Cliente (nuevo)").strip()
-        nuevo_sector = st.text_input("🏙️ Sector")
-        nuevo_nombre = st.text_input("👤 Nombre")
-        nueva_direccion = st.text_input("📍 Dirección")
-        nuevo_telefono = st.text_input("📞 Teléfono")
-        nuevo_precinto = st.text_input("🔒 N° de Precinto (opcional)")
+        nuevo_nro = st.text_input("🔢 N° de Cliente (nuevo)", help="Número único de cliente").strip()
+        nuevo_sector = st.text_input("🏙️ Sector", help="Zona o sector del cliente")
+        nuevo_nombre = st.text_input("👤 Nombre", help="Nombre completo del cliente")
+        nueva_direccion = st.text_input("📍 Dirección", help="Dirección completa")
+        nuevo_telefono = st.text_input("📞 Teléfono", help="Teléfono de contacto")
+        nuevo_precinto = st.text_input("🔒 N° de Precinto (opcional)", help="Número de precinto si aplica")
 
-        if st.form_submit_button("💾 Guardar nuevo cliente"):
+        if st.form_submit_button("💾 Guardar nuevo cliente", use_container_width=True):
             if not nuevo_nro or not nuevo_nombre:
                 st.error("⚠️ Debés ingresar al menos el N° de cliente y el nombre.")
             else:
@@ -658,7 +740,7 @@ elif opcion == "Imprimir reclamos":
         df_pendientes = df[df["estado"] == "Pendiente"]
         if not df_pendientes.empty:
             st.dataframe(df_pendientes[["fecha_hora", "nro_cliente", "nombre", "tipo_reclamo", "tecnico"]], 
-                        use_container_width=True)
+                        use_container_width=True, hide_index=True)
         else:
             st.success("✅ No hay reclamos pendientes actualmente.")
 
@@ -683,7 +765,7 @@ elif opcion == "Imprimir reclamos":
         )
 
         # Generar PDF
-        if st.button("📄 Generar PDF"):
+        if st.button("📄 Generar PDF", use_container_width=True):
             if not selected and not tipos_seleccionados:
                 st.warning("Seleccioná al menos un reclamo")
             else:
@@ -730,7 +812,8 @@ elif opcion == "Imprimir reclamos":
                     label="📥 Descargar PDF",
                     data=buffer,
                     file_name="reclamos.pdf",
-                    mime="application/pdf"
+                    mime="application/pdf",
+                    use_container_width=True
                 )
     except Exception:
         st.error("Error al generar PDF")
@@ -738,7 +821,7 @@ elif opcion == "Imprimir reclamos":
 # --- SECCIÓN 6: SEGUIMIENTO TÉCNICO ---
 elif opcion == "Seguimiento técnico":
     st.subheader("👷 Seguimiento técnico del reclamo")
-    cliente_input = st.text_input("🔍 Ingresá el N° de Cliente para actualizar su reclamo").strip()
+    cliente_input = st.text_input("🔍 Ingresá el N° de Cliente para actualizar su reclamo", help="Ingrese el número de cliente").strip()
 
     if cliente_input:
         try:
@@ -773,10 +856,11 @@ elif opcion == "Seguimiento técnico":
                     nuevos_tecnicos = st.multiselect(
                         "👷 Técnicos asignados",
                         tecnicos_disponibles,
-                        default=[t for t in tecnicos_disponibles if t in tecnicos_actuales]
+                        default=[t for t in tecnicos_disponibles if t in tecnicos_actuales],
+                        help="Seleccione los técnicos asignados"
                     )
 
-                    if st.button("💾 Actualizar reclamo"):
+                    if st.button("💾 Actualizar reclamo", use_container_width=True):
                         if not nuevos_tecnicos:
                             st.warning("⚠️ Debes asignar al menos un técnico")
                         else:
@@ -836,7 +920,8 @@ elif opcion == "Cierre de Reclamos":
                 
                 st.dataframe(
                     en_curso[["nro_cliente", "nombre", "tipo_reclamo", "tecnico"]],
-                    use_container_width=True
+                    use_container_width=True,
+                    hide_index=True
                 )
                 
                 for _, row in en_curso.iterrows():
@@ -851,7 +936,7 @@ elif opcion == "Cierre de Reclamos":
                             )
                             
                         with col2:
-                            if st.button("✅ Marcar como Resuelto", key=f"resolver_{row['id']}"):
+                            if st.button("✅ Marcar como Resuelto", key=f"resolver_{row['id']}", use_container_width=True):
                                 try:
                                     with conn.cursor() as cur:
                                         # Actualizar reclamo
@@ -888,7 +973,7 @@ elif opcion == "Cierre de Reclamos":
         st.error("Error de conexión")
 
 # --- BOTÓN DE LOGOUT ---
-if st.sidebar.button("🚪 Cerrar sesión"):
+if st.sidebar.button("🚪 Cerrar sesión", use_container_width=True):
     st.session_state.logueado = False
     st.session_state.usuario_actual = ""
     st.rerun()
