@@ -5,3 +5,5 @@ python-dotenv==1.0.1
 pytz==2024.1
 reportlab==4.1.0
 requests==2.31.0
+extra-streamlit-components==0.1.80
+streamlit-extras==0.7.5
