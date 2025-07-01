@@ -190,9 +190,9 @@ try:
         
         col1, col2, col3, col4 = st.columns(4)
         with col1: st.metric("📄 Total activos", len(df_activos))
-        with col2: st.metric("🕒 Pendientes", len(df_activos[df_activos["estado"] == "Pendiente"))
-        with col3: st.metric("🔧 En curso", len(df_activos[df_activos["estado"] == "En curso"))
-        with col4: st.metric("✅ Resueltos", len(df_reclamos[df_reclamos["estado"] == "Resuelto"))
+        with col2: st.metric("🕒 Pendientes", len(df_activos[df_activos["estado"] == "Pendiente"]))
+        with col3: st.metric("🔧 En curso", len(df_activos[df_activos["estado"] == "En curso"]))
+        with col4: st.metric("✅ Resueltos", len(df_reclamos[df_reclamos["estado"] == "Resuelto"]))
     else:
         st.info("📊 No hay reclamos registrados aún")
 except Exception as e:
