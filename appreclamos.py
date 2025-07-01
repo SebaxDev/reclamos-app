@@ -268,7 +268,7 @@ if not st.session_state.logueado:
 
         if enviar:
             if not usuario or not password:
-                st.error("❌ Por favor completa todos los campos")
+                st.error("�?Por favor completa todos los campos")
             else:
                 with st.spinner("Verificando credenciales..."):
                     try:
@@ -286,11 +286,11 @@ if not st.session_state.logueado:
                                     if resultado:
                                         st.session_state.logueado = True
                                         st.session_state.usuario_actual = usuario
-                                        st.success("✅ Acceso concedido")
+                                        st.success("�?Acceso concedido")
                                         time.sleep(0.5)
                                         st.rerun()
                                     else:
-                                        st.error("❌ Usuario o contraseña incorrectos")
+                                        st.error("�?Usuario o contraseña incorrectos")
                             finally:
                                 conn.close()
                     except Exception as e:
@@ -418,7 +418,7 @@ try:
         with colm3:
             st.metric("🔧 En curso", en_curso, help="Reclamos en proceso")
         with colm4:
-            st.metric("✅ Resueltos", resueltos, help="Reclamos finalizados")
+            st.metric("�?Resueltos", resueltos, help="Reclamos finalizados")
     else:
         st.info("📊 No hay reclamos registrados aún")
 except Exception as e:
@@ -455,7 +455,7 @@ if opcion == "Inicio":
             
             if not match.empty:
                 cliente_existente = match.iloc[0]
-                st.success("✅ Cliente reconocido, datos auto-cargados.")
+                st.success("�?Cliente reconocido, datos auto-cargados.")
             else:
                 st.info("ℹ️ Cliente no encontrado. Se cargará como Cliente Nuevo.")
         else:
@@ -503,7 +503,7 @@ if opcion == "Inicio":
             precinto = st.text_input("🔒 N° de Precinto (opcional)", value=cliente_existente.get("precinto", "") if cliente_existente else "")
             atendido_por = st.text_input("👤 Atendido por", help="Nombre de quien registra el reclamo")
 
-            enviado = st.form_submit_button("✅ Guardar Reclamo", use_container_width=True)
+            enviado = st.form_submit_button("�?Guardar Reclamo", use_container_width=True)
 
         if enviado:
             if not nro_cliente:
@@ -527,9 +527,9 @@ if opcion == "Inicio":
                 ]
                 
                 if guardar_reclamo(fila_reclamo):
-                    st.success("✅ Reclamo guardado correctamente.")
+                    st.success("�?Reclamo guardado correctamente.")
                     if cliente_existente is None:
-                        st.info("🗂️ Nuevo cliente agregado a la base de datos.")
+                        st.info("🗂�?Nuevo cliente agregado a la base de datos.")
                     time.sleep(1)
                     st.rerun()
 
@@ -564,7 +564,7 @@ elif opcion == "Reclamos cargados":
         with col1:
             filtro_estado = st.selectbox("🔎 Filtrar por estado", ["Todos"] + sorted(df["estado"].unique()))
         with col2:
-            filtro_sector = st.selectbox("🏙️ Filtrar por sector", ["Todos"] + sorted(df["sector"].unique()))
+            filtro_sector = st.selectbox("🏙�?Filtrar por sector", ["Todos"] + sorted(df["sector"].unique()))
         with col3:
             filtro_tipo = st.selectbox("📌 Filtrar por tipo", ["Todos"] + sorted(df["tipo_reclamo"].unique()))
 
@@ -616,13 +616,13 @@ elif opcion == "Reclamos cargados":
                                 ))
                         
                         conn.commit()
-                        st.success("✅ Cambios guardados correctamente.")
+                        st.success("�?Cambios guardados correctamente.")
                         time.sleep(1)
                         st.rerun()
                     finally:
                         conn.close()
             except Exception as e:
-                st.error(f"❌ Error al guardar cambios: {str(e)}")
+                st.error(f"�?Error al guardar cambios: {str(e)}")
                 
     except Exception as e:
         st.error(f"Error al cargar reclamos: {str(e)}")
@@ -651,7 +651,7 @@ elif opcion == "Historial por cliente":
                     st.success(f"🔎 Se encontraron {len(historial)} reclamos para el cliente {historial_cliente}.")
                     st.dataframe(historial, use_container_width=True, hide_index=True)
                 else:
-                    st.info("❕ Este cliente no tiene reclamos registrados.")
+                    st.info("�?Este cliente no tiene reclamos registrados.")
             finally:
                 conn.close()
         except Exception as e:
@@ -659,7 +659,7 @@ elif opcion == "Historial por cliente":
 
 # --- SECCIÓN 4: EDITAR CLIENTE ---
 elif opcion == "Editar cliente":
-    st.subheader("🛠️ Editar datos de un cliente")
+    st.subheader("🛠�?Editar datos de un cliente")
     cliente_editar = st.text_input("🔎 Ingresá N° de Cliente a editar", help="Ingrese el número de cliente").strip()
 
     if cliente_editar:
@@ -676,7 +676,7 @@ elif opcion == "Editar cliente":
 
                     if cliente_row:
                         with st.form("form_editar_cliente"):
-                            nuevo_sector = st.text_input("🏙️ Sector", value=cliente_row["sector"] or "")
+                            nuevo_sector = st.text_input("🏙�?Sector", value=cliente_row["sector"] or "")
                             nuevo_nombre = st.text_input("👤 Nombre", value=cliente_row["nombre"] or "")
                             nueva_direccion = st.text_input("📍 Dirección", value=cliente_row["direccion"] or "")
                             nuevo_telefono = st.text_input("📞 Teléfono", value=cliente_row["telefono"] or "")
@@ -698,11 +698,11 @@ elif opcion == "Editar cliente":
                                         cliente_editar
                                     ))
                                     conn.commit()
-                                    st.success("✅ Cliente actualizado correctamente.")
+                                    st.success("�?Cliente actualizado correctamente.")
                                     time.sleep(1)
                                     st.rerun()
                                 except Exception as e:
-                                    st.error(f"❌ Error al actualizar: {str(e)}")
+                                    st.error(f"�?Error al actualizar: {str(e)}")
                     else:
                         st.warning("⚠️ Cliente no encontrado.")
             finally:
@@ -715,7 +715,7 @@ elif opcion == "Editar cliente":
     st.subheader("🆕 Cargar nuevo cliente")
     with st.form("form_nuevo_cliente"):
         nuevo_nro = st.text_input("🔢 N° de Cliente (nuevo)", help="Número único de cliente").strip()
-        nuevo_sector = st.text_input("🏙️ Sector", help="Zona o sector del cliente")
+        nuevo_sector = st.text_input("🏙�?Sector", help="Zona o sector del cliente")
         nuevo_nombre = st.text_input("👤 Nombre", help="Nombre completo del cliente")
         nueva_direccion = st.text_input("📍 Dirección", help="Dirección completa")
         nuevo_telefono = st.text_input("📞 Teléfono", help="Teléfono de contacto")
@@ -745,7 +745,7 @@ elif opcion == "Editar cliente":
                                     nuevo_precinto
                                 ))
                             conn.commit()
-                            st.success("✅ Nuevo cliente agregado correctamente.")
+                            st.success("�?Nuevo cliente agregado correctamente.")
                             time.sleep(1)
                             st.rerun()
                         finally:
@@ -753,11 +753,11 @@ elif opcion == "Editar cliente":
                 except psycopg2.errors.UniqueViolation:
                     st.warning("⚠️ Este cliente ya existe.")
                 except Exception as e:
-                    st.error(f"❌ Error al guardar: {str(e)}")
+                    st.error(f"�?Error al guardar: {str(e)}")
 
 # --- SECCIÓN 5: IMPRESIÓN ---
 elif opcion == "Imprimir reclamos":
-    st.subheader("🖨️ Seleccionar reclamos para imprimir")
+    st.subheader("🖨�?Seleccionar reclamos para imprimir")
     try:
         df = get_reclamos()
         
@@ -771,7 +771,7 @@ elif opcion == "Imprimir reclamos":
             st.dataframe(df_pendientes[["fecha_hora", "nro_cliente", "nombre", "tipo_reclamo", "tecnico"]], 
                         use_container_width=True, hide_index=True)
         else:
-            st.success("✅ No hay reclamos pendientes actualmente.")
+            st.success("�?No hay reclamos pendientes actualmente.")
 
         solo_pendientes = st.checkbox("🧾 Mostrar solo reclamos pendientes para imprimir")
         if solo_pendientes:
@@ -880,7 +880,7 @@ elif opcion == "Seguimiento técnico":
                     nuevo_estado = st.selectbox(
                         "⚙️ Cambiar estado",
                         ["Pendiente", "En curso", "Resuelto"],
-                        index=["Pendiente", "En curso", "Resuelto"].index(reclamo_actual["estado"]))
+                        index=["Pendiente", "En curso", "Resuelto"].index(reclamo_actual["estado"])
                     )
 
                     tecnicos_actuales = [t.strip() for t in reclamo_actual.get("tecnico", "").split(",") if t.strip()]
@@ -908,13 +908,13 @@ elif opcion == "Seguimiento técnico":
                                         reclamo_actual["id"]
                                     ))
                                 conn.commit()
-                                st.success("✅ Reclamo actualizado correctamente.")
+                                st.success("�?Reclamo actualizado correctamente.")
                                 time.sleep(1)
                                 st.rerun()
                             except Exception as e:
-                                st.error(f"❌ Error al actualizar: {str(e)}")
+                                st.error(f"�?Error al actualizar: {str(e)}")
                 else:
-                    st.warning("❕ Este cliente no tiene reclamos pendientes o en curso.")
+                    st.warning("�?Este cliente no tiene reclamos pendientes o en curso.")
             finally:
                 conn.close()
         except Exception as e:
@@ -922,7 +922,7 @@ elif opcion == "Seguimiento técnico":
 
 # --- SECCIÓN 7: CIERRE DE RECLAMOS ---
 elif opcion == "Cierre de Reclamos":
-    st.subheader("✅ Cierre de reclamos en curso")
+    st.subheader("�?Cierre de reclamos en curso")
     try:
         conn = get_db_connection()
         if conn is None:
@@ -969,7 +969,7 @@ elif opcion == "Cierre de Reclamos":
                             )
                             
                         with col2:
-                            if st.button("✅ Marcar como Resuelto", key=f"resolver_{row['id']}", use_container_width=True):
+                            if st.button("�?Marcar como Resuelto", key=f"resolver_{row['id']}", use_container_width=True):
                                 try:
                                     with conn.cursor() as cur:
                                         # Actualizar reclamo
@@ -999,7 +999,7 @@ elif opcion == "Cierre de Reclamos":
                                     time.sleep(1)
                                     st.rerun()
                                 except Exception as e:
-                                    st.error(f"❌ Error al cerrar reclamo: {str(e)}")
+                                    st.error(f"�?Error al cerrar reclamo: {str(e)}")
         finally:
             conn.close()
     except Exception as e:
