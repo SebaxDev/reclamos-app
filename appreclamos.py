@@ -2,19 +2,31 @@ import streamlit as st
 from datetime import datetime
 import pytz
 import pandas as pd
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-import io
+import os
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2 import service_account
 import time
 
-# Configuración de credenciales desde variables de entorno
-# Configuración de la página
-st.set_page_config(page_title="Sistema de Reclamos", layout="wide")
+# =============================================
+# CONFIGURACIÓN INICIAL
+# =============================================
+st.set_page_config(
+    page_title="Fusion Reclamos App",
+    page_icon="📋",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+    menu_items={
+        'Get Help': 'https://www.google.com',
+        'About': "### App de Gestión de Reclamos v2.0\nSistema para registro y seguimiento de reclamos técnicos"
+    }
+)
 
-# --- Conexión con Google Sheets ---
-def connect_to_gsheet():
+# =============================================
+# CONEXIÓN A GOOGLE SHEETS (USANDO VARIABLES DE ENTORNO)
+# =============================================
+@st.cache_resource
+def get_google_sheet():
+    """Conecta con Google Sheets usando variables de entorno"""
     try:
         # Crear diccionario de credenciales desde variables de entorno
         creds_dict = {
@@ -39,55 +51,7 @@ def connect_to_gsheet():
         ])
         
         client = gspread.authorize(scoped_creds)
-        sheet = client.open_by_key(os.environ.get("GOOGLE_SHEETS_ID"))
-        worksheet = sheet.worksheet("Fusion Reclamos App")  # Cambia "Reclamos" por el nombre de tu hoja
-        
-        return worksheet
-    
-    except Exception as e:
-        st.error(f"🚨 Error al conectar con Google Sheets: {str(e)}")
-        return None
-
-# =============================================
-# CONFIGURACIÓN INICIAL
-# =============================================
-st.set_page_config(
-    page_title="Fusion Reclamos App",
-    page_icon="📋",
-    layout="centered",
-    initial_sidebar_state="collapsed",
-    menu_items={
-        'Get Help': 'https://www.google.com',
-        'About': "### App de Gestión de Reclamos v2.0\nSistema para registro y seguimiento de reclamos técnicos"
-    }
-)
-
-# =============================================
-# CONEXIÓN A GOOGLE SHEETS (REEMPLAZA POSTGRESQL)
-# =============================================
-@st.cache_resource
-def get_google_sheet():
-    """Conecta con Google Sheets usando credenciales"""
-    try:
-        scope = ["https://spreadsheets.google.com/feeds", 
-                "https://www.googleapis.com/auth/drive"]
-        
-        creds_json = {
-            "type": st.secrets["type"],
-            "project_id": st.secrets["project_id"],
-            "private_key_id": st.secrets["private_key_id"],
-            "private_key": st.secrets["private_key"].replace("\\n", "\n"),
-            "client_email": st.secrets["client_email"],
-            "client_id": st.secrets["client_id"],
-            "auth_uri": st.secrets["auth_uri"],
-            "token_uri": st.secrets["token_uri"],
-            "auth_provider_x509_cert_url": st.secrets["auth_provider_x509_cert_url"],
-            "client_x509_cert_url": st.secrets["client_x509_cert_url"]
-        }
-        
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
-        gc = gspread.authorize(creds)
-        return gc.open_by_key(st.secrets["SHEET_ID"])
+        return client.open_by_key(os.environ.get("GOOGLE_SHEETS_ID"))
     except Exception as e:
         st.error(f"🚨 Error al conectar con Google Sheets: {str(e)}")
         return None
@@ -98,8 +62,12 @@ def get_google_sheet():
 def get_clientes():
     """Obtiene todos los clientes"""
     try:
-        sheet = get_google_sheet().worksheet("clientes")
-        return pd.DataFrame(sheet.get_all_records())
+        sheet = get_google_sheet()
+        if sheet is None:
+            return pd.DataFrame(columns=['nro_cliente', 'sector', 'nombre', 'direccion', 'telefono', 'precintos'])
+        
+        worksheet = sheet.worksheet("clientes")
+        return pd.DataFrame(worksheet.get_all_records())
     except Exception as e:
         st.error(f"Error al obtener clientes: {str(e)}")
         return pd.DataFrame(columns=['nro_cliente', 'sector', 'nombre', 'direccion', 'telefono', 'precintos'])
@@ -107,10 +75,15 @@ def get_clientes():
 def get_reclamos():
     """Obtiene todos los reclamos"""
     try:
-        sheet = get_google_sheet().worksheet("reclamos")
-        df = pd.DataFrame(sheet.get_all_records())
+        sheet = get_google_sheet()
+        if sheet is None:
+            return pd.DataFrame(columns=['id', 'fecha_hora', 'nro_cliente', 'sector', 'nombre', 'direccion', 
+                                      'telefono', 'tipo_reclamo', 'detalles', 'estado', 'tecnico', 'precinto', 
+                                      'atendido_por', 'fecha_resolucion'])
         
-        # Convertir tipos de datos
+        worksheet = sheet.worksheet("reclamos")
+        df = pd.DataFrame(worksheet.get_all_records())
+        
         if not df.empty:
             df['fecha_hora'] = pd.to_datetime(df['fecha_hora'])
             if 'fecha_resolucion' in df.columns:
@@ -125,15 +98,18 @@ def get_reclamos():
 def guardar_reclamo(fila_reclamo):
     """Guarda un nuevo reclamo en Google Sheets"""
     try:
-        sheet = get_google_sheet().worksheet("reclamos")
+        sheet = get_google_sheet()
+        if sheet is None:
+            return False
+            
+        reclamos_sheet = sheet.worksheet("reclamos")
+        clientes_sheet = sheet.worksheet("clientes")
         
         # Insertar cliente si no existe
-        clientes_sheet = get_google_sheet().worksheet("clientes")
         nro_cliente = fila_reclamo[1]  # Posición del nro_cliente en la lista
         
-        # Verificar si el cliente ya existe
         try:
-            clientes_sheet.find(nro_cliente)
+            clientes_sheet.find(str(nro_cliente))
         except gspread.exceptions.CellNotFound:
             # Insertar nuevo cliente
             cliente_data = fila_reclamo[1:7]  # [nro_cliente, sector, nombre, direccion, telefono, precinto]
@@ -141,7 +117,7 @@ def guardar_reclamo(fila_reclamo):
         
         # Guardar reclamo (convertir datetime a string)
         fila_reclamo[0] = str(fila_reclamo[0])  # fecha_hora
-        sheet.append_row(fila_reclamo)
+        reclamos_sheet.append_row(fila_reclamo)
         return True
     except Exception as e:
         st.error(f"Error al guardar reclamo: {str(e)}")
@@ -150,15 +126,19 @@ def guardar_reclamo(fila_reclamo):
 def actualizar_reclamo(id_reclamo, nuevos_datos):
     """Actualiza un reclamo existente"""
     try:
-        sheet = get_google_sheet().worksheet("reclamos")
-        records = sheet.get_all_records()
+        sheet = get_google_sheet()
+        if sheet is None:
+            return False
+            
+        worksheet = sheet.worksheet("reclamos")
+        records = worksheet.get_all_records()
         
         # Buscar fila por ID
         for idx, row in enumerate(records, start=2):  # Empieza en 2 (fila 1 es headers)
             if str(row['id']) == str(id_reclamo):
                 # Actualizar campos
                 for key, value in nuevos_datos.items():
-                    sheet.update_cell(idx, list(row.keys()).index(key) + 1, value)
+                    worksheet.update_cell(idx, list(row.keys()).index(key) + 1, value)
                 return True
         return False
     except Exception as e:
@@ -183,8 +163,13 @@ if not st.session_state.logueado:
 
         if enviar:
             try:
-                sheet = get_google_sheet().worksheet("usuarios")
-                usuarios = pd.DataFrame(sheet.get_all_records())
+                sheet = get_google_sheet()
+                if sheet is None:
+                    st.error("No se pudo conectar a Google Sheets. Verifica las credenciales.")
+                    st.stop()
+                
+                worksheet = sheet.worksheet("usuarios")
+                usuarios = pd.DataFrame(worksheet.get_all_records())
                 
                 if not usuarios.empty:
                     user = usuarios[(usuarios['username'] == usuario) & (usuarios['password'] == password)]
@@ -197,7 +182,7 @@ if not st.session_state.logueado:
                     else:
                         st.error("❌ Usuario o contraseña incorrectos")
                 else:
-                    st.error("No hay usuarios registrados")
+                    st.error("No hay usuarios registrados en el sistema")
             except Exception as e:
                 st.error(f"Error durante el login: {str(e)}")
     st.stop()
@@ -326,6 +311,7 @@ if opcion == "Inicio":
                     tipo_reclamo,
                     detalles.upper(),
                     "Pendiente",
+                    "",  # Campo para técnico (vacío inicialmente)
                     precinto,
                     atendido_por.upper()
                 ]
@@ -360,7 +346,7 @@ elif opcion == "Reclamos cargados":
             df,
             column_config={
                 "estado": st.column_config.SelectboxColumn("Estado", options=["Pendiente", "En curso", "Resuelto"]),
-                "tecnico": st.column_config.TextColumn("Técnico"),
+                "tecnico": st.column_config.SelectboxColumn("Técnico", options=tecnicos_disponibles),
                 "precinto": st.column_config.TextColumn("Precinto")
             },
             hide_index=True,
