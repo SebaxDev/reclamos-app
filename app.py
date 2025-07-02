@@ -932,7 +932,6 @@ elif opcion == "Seguimiento técnico":
 # --------------------------
 # SECCIÓN 7: CIERRE DE RECLAMOS
 # --------------------------
-
 elif opcion == "Cierre de Reclamos":
     st.markdown('<div class="section-container">', unsafe_allow_html=True)
     st.subheader("✅ Cierre de reclamos en curso")
@@ -986,21 +985,19 @@ elif opcion == "Cierre de Reclamos":
                     if st.button("✅ Resuelto", key=f"resolver_{i}", use_container_width=True):
                         with st.spinner("Cerrando reclamo..."):
                             try:
-                                # Actualizar estado a Resuelto
                                 updates = [{"range": f"I{i + 2}", "values": [["Resuelto"]]}]
-                                
-                                # Si hay columna de fecha de resolución, agregarla
+
+                                # Agregar fecha de resolución si corresponde
                                 if len(COLUMNAS_RECLAMOS) > 12:
                                     argentina = pytz.timezone("America/Argentina/Buenos_Aires")
                                     fecha_resolucion = datetime.now(argentina).strftime("%d/%m/%Y %H:%M:%S")
                                     updates.append({"range": f"M{i + 2}", "values": [[fecha_resolucion]]})
-                                
-                                # Actualizar precinto si se modificó
-                                if nuevo_precinto.strip() and nuevo_precinto != precinto_actual and not cliente_info.empty:
-                                    index_cliente = cliente_info.index[0] + 2
-                                    updates.append({"range": f"F{index_cliente}", "values": [[nuevo_precinto.strip()]]})
-                                
-                                # Ejecutar actualizaciones
+
+                                # Actualizar precinto en hoja de reclamos (visual)
+                                if nuevo_precinto.strip() and nuevo_precinto != precinto_actual:
+                                    updates.append({"range": f"F{i + 2}", "values": [[nuevo_precinto.strip()]]})
+
+                                # Ejecutar actualizaciones en hoja de reclamos
                                 success, error = api_manager.safe_sheet_operation(
                                     batch_update_sheet,
                                     sheet_reclamos,
@@ -1009,13 +1006,24 @@ elif opcion == "Cierre de Reclamos":
                                 )
 
                                 if success:
+                                    # También actualizar en hoja de CLIENTES si el cliente existe
+                                    if nuevo_precinto.strip() and nuevo_precinto != precinto_actual and not cliente_info.empty:
+                                        index_cliente_en_clientes = cliente_info.index[0] + 2
+                                        success_precinto, error_precinto = api_manager.safe_sheet_operation(
+                                            sheet_clientes.update,
+                                            f"F{index_cliente_en_clientes}",
+                                            [[nuevo_precinto.strip()]]
+                                        )
+                                        if not success_precinto:
+                                            st.warning(f"⚠️ Precinto guardado en reclamo pero no en hoja de clientes: {error_precinto}")
+
                                     st.success(f"🟢 Reclamo de {row['Nombre']} cerrado correctamente.")
                                     st.cache_data.clear()
                                     time.sleep(1)
                                     st.rerun()
                                 else:
                                     st.error(f"❌ Error al actualizar: {error}")
-                                    
+
                             except Exception as e:
                                 st.error(f"❌ Error inesperado: {str(e)}")
 
@@ -1025,16 +1033,16 @@ elif opcion == "Cierre de Reclamos":
                             try:
                                 updates = [
                                     {"range": f"I{i + 2}", "values": [["Pendiente"]]},
-                                    {"range": f"J{i + 2}", "values": [[""]]}  # Limpiar técnicos
+                                    {"range": f"J{i + 2}", "values": [[""]]}  # Limpiar técnico
                                 ]
-                                
+
                                 success, error = api_manager.safe_sheet_operation(
                                     batch_update_sheet,
                                     sheet_reclamos,
                                     updates,
                                     is_batch=True
                                 )
-                                
+
                                 if success:
                                     st.success(f"🔄 Reclamo de {row['Nombre']} vuelto a PENDIENTE.")
                                     st.cache_data.clear()
@@ -1042,12 +1050,12 @@ elif opcion == "Cierre de Reclamos":
                                     st.rerun()
                                 else:
                                     st.error(f"❌ Error al actualizar: {error}")
-                                    
+
                             except Exception as e:
                                 st.error(f"❌ Error inesperado: {str(e)}")
 
                 st.divider()
-    
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 # --------------------------
