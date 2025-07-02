@@ -22,6 +22,7 @@ from utils.data_manager import safe_get_sheet_data, safe_normalize, update_sheet
 from utils.api_manager import api_manager, init_api_session_state  # Import modificado
 from config.settings import *
 
+st.markdown(get_main_styles(dark_mode=modo_oscuro), unsafe_allow_html=True)
 # --------------------------------------------------
 # INICIALIZACIÓN GARANTIZADA
 # --------------------------------------------------
@@ -43,7 +44,7 @@ st.set_page_config(
 )
 
 # Aplicar estilos
-st.markdown(get_main_styles(), unsafe_allow_html=True)
+modo_oscuro = st.sidebar.toggle("🌙 Modo oscuro", value=False)
 
 # Verificar autenticación
 if not check_authentication():
@@ -255,6 +256,34 @@ if opcion == "Inicio":
 # --------------------------
 # SECCIÓN 2: RECLAMOS CARGADOS
 # --------------------------
+# Distribución por tipo de reclamo (activos)
+df_activos = df[df["Estado"].isin(["Pendiente", "En curso"])]
+
+if not df_activos.empty:
+    conteo_por_tipo = df_activos["Tipo de reclamo"].value_counts().sort_index()
+
+    st.markdown("#### 📊 Distribución de reclamos activos por tipo")
+    st.markdown('<div style="margin-top: -10px; margin-bottom: 10px;">', unsafe_allow_html=True)
+
+    tipos = list(conteo_por_tipo.index)
+    cantidad = list(conteo_por_tipo.values)
+
+    cols_per_row = 4
+    for i in range(0, len(tipos), cols_per_row):
+        cols = st.columns(cols_per_row)
+        for j, col in enumerate(cols):
+            if i + j < len(tipos):
+                with col:
+                    tipo = tipos[i + j]
+                    cant = cantidad[i + j]
+                    st.markdown(f"""
+                        <div style="text-align: center; padding: 8px 5px; border-radius: 10px; background-color: #f8f9fa; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                            <h5 style="margin: 0; font-size: 0.75rem; color: #6c757d;">{tipo}</h5>
+                            <h4 style="margin: 2px 0 0 0; color: #0d6efd;">{cant}</h4>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
 elif opcion == "Reclamos cargados":
     st.markdown('<div class="section-container">', unsafe_allow_html=True)
