@@ -94,7 +94,7 @@ with st.spinner("Conectando con Google Sheets..."):
         st.stop()
 
 # --------------------------
-# CARGA DE DATOS
+# CARGA DE DATOS (MODIFICAR ESTA SECCIÓN)
 # --------------------------
 
 @st.cache_data(ttl=30, show_spinner="Cargando datos...")
@@ -118,8 +118,22 @@ def load_data():
         st.error(f"Error al cargar datos: {str(e)}")
         return pd.DataFrame(), pd.DataFrame()
 
-# Cargar datos
-df_reclamos, df_clientes = load_data()
+# Cargar datos con verificación mejorada
+with st.spinner("Cargando datos desde Google Sheets..."):
+    df_reclamos, df_clientes = load_data()
+    
+    # Debug adicional
+    st.subheader("🧪 DEBUG: Verificación de datos")
+    st.write("📊 DataFrame de Reclamos (primeras filas):")
+    st.dataframe(df_reclamos.head())
+    
+    st.write("📝 Estructura del DataFrame de Reclamos:")
+    st.write(df_reclamos.info())
+    
+    if df_reclamos.empty:
+        st.error("El DataFrame de reclamos está vacío. Verifica la conexión y los datos.")
+    else:
+        st.success(f"Datos cargados correctamente. {len(df_reclamos)} reclamos encontrados.")
 
 # --------------------------
 # INTERFAZ PRINCIPAL

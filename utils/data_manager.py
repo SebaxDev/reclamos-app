@@ -1,5 +1,6 @@
 """
 Gestor de datos para operaciones con Google Sheets
+Versión mejorada con manejo robusto de datos
 """
 import pandas as pd
 import streamlit as st
@@ -8,21 +9,36 @@ from utils.api_manager import api_manager
 def safe_get_sheet_data(sheet, expected_columns):
     """Carga datos de una hoja de forma segura"""
     try:
-        data, error = api_manager.safe_sheet_operation(sheet.get_all_records)
+        # Obtener todos los valores como lista de listas
+        data, error = api_manager.safe_sheet_operation(sheet.get_all_values)
         if error:
+            st.error(f"Error al obtener datos: {error}")
             return pd.DataFrame(columns=expected_columns)
         
-        df = pd.DataFrame(data)
+        # Si no hay datos, devolver DataFrame vacío con columnas esperadas
+        if len(data) <= 1:  # Solo encabezado o vacío
+            return pd.DataFrame(columns=expected_columns)
         
-        if df.empty and len(sheet.row_values(1)) > 0:
-            df = pd.DataFrame(columns=sheet.row_values(1))
-            
-        if df.empty:
-            df = pd.DataFrame(columns=expected_columns)
-            
-        return df
+        # Crear DataFrame con los datos
+        headers = data[0]
+        rows = data[1:]
+        
+        # Asegurar que tenemos el mismo número de columnas
+        if len(headers) != len(expected_columns):
+            st.warning(f"Advertencia: Número de columnas diferente. Esperadas: {len(expected_columns)}, Encontradas: {len(headers)}")
+        
+        # Crear DataFrame
+        df = pd.DataFrame(rows, columns=headers)
+        
+        # Asegurar que tenemos todas las columnas esperadas
+        for col in expected_columns:
+            if col not in df.columns:
+                df[col] = None  # Agregar columna faltante con valores nulos
+        
+        return df[expected_columns]  # Devolver solo las columnas esperadas en el orden correcto
+        
     except Exception as e:
-        st.warning(f"Error al cargar datos: {e}")
+        st.error(f"Error crítico al cargar datos: {str(e)}")
         return pd.DataFrame(columns=expected_columns)
 
 def safe_normalize(df, column):
