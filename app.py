@@ -121,6 +121,21 @@ def load_data():
 # Cargar datos
 df_reclamos, df_clientes = load_data()
 
+st.subheader("🧪 DEBUG: Ver datos cargados desde Sheets")
+
+# Revisar si la hoja está vacía
+raw_reclamos = sheet_reclamos.get_all_values()
+st.write("🔍 Datos crudos desde Sheets (Reclamos):")
+st.write(raw_reclamos)
+
+if not raw_reclamos:
+    st.error("❌ La hoja 'Reclamos' está vacía o mal cargada.")
+else:
+    st.success(f"✅ Se cargaron {len(raw_reclamos)-1} filas de datos reales (sin contar encabezado).")
+
+st.write("🧪 Columnas esperadas:", COLUMNAS_RECLAMOS)
+st.write("🧪 Columnas reales:", df_reclamos.columns.tolist())
+
 # --------------------------
 # INTERFAZ PRINCIPAL
 # --------------------------
