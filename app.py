@@ -312,7 +312,7 @@ elif opcion == "Reclamos cargados":
         # ==============================
         st.markdown("#### 🔍 Filtros de búsqueda")
         col1, col2, col3 = st.columns(3)
-        
+
         with col1:
             filtro_estado = st.selectbox("Estado", ["Todos"] + sorted(df["Estado"].unique()))
         with col2:
@@ -339,58 +339,62 @@ elif opcion == "Reclamos cargados":
 
         # ==============================
         # FORMULARIO DE EDICIÓN MANUAL
-		# ==============================
-		st.markdown("---")
-		st.markdown("### ✏️ Editar un reclamo puntual")
+        # ==============================
+        st.markdown("---")
+        st.markdown("### ✏️ Editar un reclamo puntual")
 
-		# Mostrar selector como "5442 - Juan Gómez"
-		df_filtrado["label_selector"] = df_filtrado["Nº Cliente"] + " - " + df_filtrado["Nombre"]
-		selector = st.selectbox(
-			"Seleccioná un reclamo por Nº de Cliente y Nombre",
-			[""] + df_filtrado["label_selector"].tolist()
-		)
+        # Selector por Nº Cliente - Nombre
+        df_filtrado["label_selector"] = df_filtrado["Nº Cliente"] + " - " + df_filtrado["Nombre"]
+        selector = st.selectbox(
+            "Seleccioná un reclamo por Nº de Cliente y Nombre",
+            [""] + df_filtrado["label_selector"].tolist()
+        )
 
-		if selector:
-			nro_cliente = selector.split(" - ")[0]
-			reclamo_actual = df[df["Nº Cliente"] == nro_cliente].iloc[0]
+        if selector:
+            nro_cliente = selector.split(" - ")[0]
+            reclamo_actual = df[df["Nº Cliente"] == nro_cliente].iloc[0]
 
-			nueva_direccion = st.text_input("Dirección", value=reclamo_actual.get("Dirección", ""))
-			nuevo_telefono = st.text_input("Teléfono", value=reclamo_actual.get("Teléfono", ""))
-			nuevo_tipo = st.selectbox("Tipo de reclamo", sorted(df["Tipo de reclamo"].unique()), index=sorted(df["Tipo de reclamo"].unique()).index(reclamo_actual["Tipo de reclamo"]))
-			nuevos_detalles = st.text_area("Detalles del reclamo", value=reclamo_actual.get("Detalles", ""), height=100)
-			nuevo_precinto = st.text_input("N° de Precinto", value=reclamo_actual.get("N° de Precinto", ""))
+            nueva_direccion = st.text_input("Dirección", value=reclamo_actual.get("Dirección", ""))
+            nuevo_telefono = st.text_input("Teléfono", value=reclamo_actual.get("Teléfono", ""))
+            nuevo_tipo = st.selectbox("Tipo de reclamo", sorted(df["Tipo de reclamo"].unique()), 
+                                      index=sorted(df["Tipo de reclamo"].unique()).index(reclamo_actual["Tipo de reclamo"]))
+            nuevos_detalles = st.text_area("Detalles del reclamo", value=reclamo_actual.get("Detalles", ""), height=100)
+            nuevo_precinto = st.text_input("N° de Precinto", value=reclamo_actual.get("N° de Precinto", ""))
 
-			if st.button("💾 Guardar cambios", key="guardar_reclamo_individual", use_container_width=True):
-				with st.spinner("Guardando cambios..."):
-					try:
-						idx_original = df[df["Nº Cliente"] == nro_cliente].index[0]
+            if st.button("💾 Guardar cambios", key="guardar_reclamo_individual", use_container_width=True):
+                with st.spinner("Guardando cambios..."):
+                    try:
+                        idx_original = df[df["Nº Cliente"] == nro_cliente].index[0]
 
-						df.loc[idx_original, "Dirección"] = nueva_direccion
-						df.loc[idx_original, "Teléfono"] = nuevo_telefono
-						df.loc[idx_original, "Tipo de reclamo"] = nuevo_tipo
-						df.loc[idx_original, "Detalles"] = nuevos_detalles
-						df.loc[idx_original, "N° de Precinto"] = nuevo_precinto
+                        df.loc[idx_original, "Dirección"] = nueva_direccion
+                        df.loc[idx_original, "Teléfono"] = nuevo_telefono
+                        df.loc[idx_original, "Tipo de reclamo"] = nuevo_tipo
+                        df.loc[idx_original, "Detalles"] = nuevos_detalles
+                        df.loc[idx_original, "N° de Precinto"] = nuevo_precinto
 
-						df = df.astype(str)
+                        df = df.astype(str)
 
-						data_to_update = [df.columns.tolist()] + df.values.tolist()
-						success, error = api_manager.safe_sheet_operation(
-							sheet_reclamos.update,
-							data_to_update,
-							is_batch=True
-						)
+                        data_to_update = [df.columns.tolist()] + df.values.tolist()
+                        success, error = api_manager.safe_sheet_operation(
+                            sheet_reclamos.update,
+                            data_to_update,
+                            is_batch=True
+                        )
 
-						if success:
-							st.success("✅ Reclamo actualizado correctamente.")
-							st.cache_data.clear()
-							time.sleep(1)
-							st.rerun()
-						else:
-							st.error(f"❌ Error al guardar: {error}")
-					except Exception as e:
-						st.error(f"❌ Error al procesar: {str(e)}")
+                        if success:
+                            st.success("✅ Reclamo actualizado correctamente.")
+                            st.cache_data.clear()
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Error al guardar: {error}")
+                    except Exception as e:
+                        st.error(f"❌ Error al procesar: {str(e)}")
 
-		st.markdown('</div>', unsafe_allow_html=True)  # Cierre del contenedor
+    except Exception as e:
+        st.error(f"⚠️ Error en la gestión de reclamos: {str(e)}")
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # --------------------------
 # SECCIÓN 3: HISTORIAL POR CLIENTE
