@@ -234,4 +234,4 @@ def get_loading_spinner():
     <div class="loading-overlay">
         <div class="spinner"></div>
     </div>
-    ""
+    """
