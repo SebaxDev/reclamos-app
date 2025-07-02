@@ -297,11 +297,24 @@ elif opcion == "Reclamos cargados":
                     if i + j < len(tipos):
                         tipo = tipos[i + j]
                         cant = cantidad[i + j]
+                        
+                        # Estilos dinámicos
+                        color_cantidad = "#dc3545" if cant > 10 else "#0d6efd"  # rojo si > 10
+                        font_size = "1.4rem" if cant > 10 else "1.2rem"
+                        bg_color = "#f8f9fa"
+            
                         with col:
                             st.markdown(f"""
-                                <div style="text-align: center; padding: 8px 5px; border-radius: 10px; background-color: #f8f9fa; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                                    <h5 style="margin: 0; font-size: 0.75rem; color: #6c757d;">{tipo}</h5>
-                                    <h4 style="margin: 2px 0 0 0; color: #0d6efd;">{cant}</h4>
+                                <div style="
+                                    text-align: center;
+                                    padding: 5px 4px;
+                                    border-radius: 8px;
+                                    background-color: {bg_color};
+                                    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                                    margin-bottom: 8px;
+                                ">
+                                    <h5 style="margin: 0; font-size: 0.70rem; color: #6c757d;">{tipo}</h5>
+                                    <h4 style="margin: 2px 0 0 0; color: {color_cantidad}; font-size: {font_size};">{cant}</h4>
                                 </div>
                             """, unsafe_allow_html=True)
 
