@@ -22,7 +22,6 @@ from utils.data_manager import safe_get_sheet_data, safe_normalize, update_sheet
 from utils.api_manager import api_manager, init_api_session_state  # Import modificado
 from config.settings import *
 
-st.markdown(get_main_styles(dark_mode=modo_oscuro), unsafe_allow_html=True)
 # --------------------------------------------------
 # INICIALIZACIÓN GARANTIZADA
 # --------------------------------------------------
@@ -45,6 +44,7 @@ st.set_page_config(
 
 # Aplicar estilos
 modo_oscuro = st.sidebar.toggle("🌙 Modo oscuro", value=False)
+st.markdown(get_main_styles(dark_mode=modo_oscuro), unsafe_allow_html=True)
 
 # Verificar autenticación
 if not check_authentication():
