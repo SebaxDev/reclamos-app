@@ -58,17 +58,48 @@ client = gspread.authorize(credentials)
 sheet_reclamos = client.open_by_key(SHEET_ID).worksheet(WORKSHEET_RECLAMOS)
 sheet_clientes = client.open_by_key(SHEET_ID).worksheet(WORKSHEET_CLIENTES)
 
-# --- CARGAR BASES ---
-clientes_data = sheet_clientes.get_all_records()
-df_clientes = pd.DataFrame(clientes_data)
-reclamos_data = sheet_reclamos.get_all_records()
-df_reclamos = pd.DataFrame(reclamos_data)
+# --- CARGAR BASES CON MANEJO DE HOJAS VACÍAS ---
+def safe_get_sheet_data(sheet, expected_columns):
+    try:
+        data = sheet.get_all_records()  # Corregí "get_all_records" (antes decía "get_all_records")
+        df = pd.DataFrame(data)
+        
+        if df.empty and len(sheet.row_values(1)) > 0:
+            df = pd.DataFrame(columns=sheet.row_values(1))
+            
+        if df.empty:
+            df = pd.DataFrame(columns=expected_columns)
+            
+        return df
+    except Exception as e:
+        st.warning(f"Error al cargar datos: {e}")
+        return pd.DataFrame(columns=expected_columns)
 
-# --- NORMALIZAR CAMPOS CLAVE ---
-df_clientes["Nº Cliente"] = df_clientes["Nº Cliente"].apply(lambda x: str(int(x)).strip() if isinstance(x, (int, float)) else str(x).strip())
-df_reclamos["Nº Cliente"] = df_reclamos["Nº Cliente"].apply(lambda x: str(int(x)).strip() if isinstance(x, (int, float)) else str(x).strip())
-df_clientes["N° de Precinto"] = df_clientes["N° de Precinto"].apply(lambda x: str(int(x)).strip() if isinstance(x, (int, float)) else str(x).strip())
-df_reclamos["N° de Precinto"] = df_reclamos["N° de Precinto"].apply(lambda x: str(int(x)).strip() if isinstance(x, (int, float)) else str(x).strip())
+COLUMNAS_RECLAMOS = [
+    "Fecha y hora", "Nº Cliente", "Sector", "Nombre", 
+    "Dirección", "Teléfono", "Tipo de reclamo", 
+    "Detalles", "Estado", "Técnico", "N° de Precinto", "Atendido por"
+]
+
+COLUMNAS_CLIENTES = [
+    "Nº Cliente", "Sector", "Nombre", "Dirección", 
+    "Teléfono", "N° de Precinto"
+]
+
+df_reclamos = safe_get_sheet_data(sheet_reclamos, COLUMNAS_RECLAMOS)
+df_clientes = safe_get_sheet_data(sheet_clientes, COLUMNAS_CLIENTES)
+
+def safe_normalize(df, column):
+    if column in df.columns:
+        df[column] = df[column].apply(
+            lambda x: str(int(x)).strip() if isinstance(x, (int, float)) else str(x).strip()
+        )
+    return df
+
+df_clientes = safe_normalize(df_clientes, "Nº Cliente")
+df_reclamos = safe_normalize(df_reclamos, "Nº Cliente")
+df_clientes = safe_normalize(df_clientes, "N° de Precinto")
+df_reclamos = safe_normalize(df_reclamos, "N° de Precinto")
 
 # --- ESTILO VISUAL MEJORADO ---
 st.markdown("""
