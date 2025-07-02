@@ -97,13 +97,29 @@ with st.spinner("Conectando con Google Sheets..."):
 # CARGA DE DATOS
 # --------------------------
 
+@st.cache_data(ttl=30, show_spinner="Cargando datos...")
+def load_data():
+    """Carga y procesa los datos de las hojas con validación mejorada"""
+    try:
+        df_reclamos = safe_get_sheet_data(sheet_reclamos, COLUMNAS_RECLAMOS)
+        df_clientes = safe_get_sheet_data(sheet_clientes, COLUMNAS_CLIENTES)
+        
+        if df_reclamos.empty or df_clientes.empty:
+            st.warning("Advertencia: Algunas hojas están vacías o no tienen datos")
+        
+        # Normalización robusta
+        for col in ["Nº Cliente", "N° de Precinto"]:
+            df_clientes = safe_normalize(df_clientes, col)
+            df_reclamos = safe_normalize(df_reclamos, col)
+            
+        return df_reclamos, df_clientes
+        
+    except Exception as e:
+        st.error(f"Error al cargar datos: {str(e)}")
+        return pd.DataFrame(), pd.DataFrame()
+
 # Cargar datos
-with st.spinner("Cargando datos desde Google Sheets..."):
-    df_reclamos, df_clientes = load_data()
-    
-    # Validación básica sin mostrar detalles técnicos
-    if df_reclamos.empty:
-        st.error("No se encontraron reclamos. Verifica la conexión con Google Sheets.")
+df_reclamos, df_clientes = load_data()
 
 # --------------------------
 # INTERFAZ PRINCIPAL
