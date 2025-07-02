@@ -94,46 +94,16 @@ with st.spinner("Conectando con Google Sheets..."):
         st.stop()
 
 # --------------------------
-# CARGA DE DATOS (MODIFICAR ESTA SECCIÓN)
+# CARGA DE DATOS
 # --------------------------
 
-@st.cache_data(ttl=30, show_spinner="Cargando datos...")
-def load_data():
-    """Carga y procesa los datos de las hojas con validación mejorada"""
-    try:
-        df_reclamos = safe_get_sheet_data(sheet_reclamos, COLUMNAS_RECLAMOS)
-        df_clientes = safe_get_sheet_data(sheet_clientes, COLUMNAS_CLIENTES)
-        
-        if df_reclamos.empty or df_clientes.empty:
-            st.warning("Advertencia: Algunas hojas están vacías o no tienen datos")
-        
-        # Normalización robusta
-        for col in ["Nº Cliente", "N° de Precinto"]:
-            df_clientes = safe_normalize(df_clientes, col)
-            df_reclamos = safe_normalize(df_reclamos, col)
-            
-        return df_reclamos, df_clientes
-        
-    except Exception as e:
-        st.error(f"Error al cargar datos: {str(e)}")
-        return pd.DataFrame(), pd.DataFrame()
-
-# Cargar datos con verificación mejorada
+# Cargar datos
 with st.spinner("Cargando datos desde Google Sheets..."):
     df_reclamos, df_clientes = load_data()
     
-    # Debug adicional
-    st.subheader("🧪 DEBUG: Verificación de datos")
-    st.write("📊 DataFrame de Reclamos (primeras filas):")
-    st.dataframe(df_reclamos.head())
-    
-    st.write("📝 Estructura del DataFrame de Reclamos:")
-    st.write(df_reclamos.info())
-    
+    # Validación básica sin mostrar detalles técnicos
     if df_reclamos.empty:
-        st.error("El DataFrame de reclamos está vacío. Verifica la conexión y los datos.")
-    else:
-        st.success(f"Datos cargados correctamente. {len(df_reclamos)} reclamos encontrados.")
+        st.error("No se encontraron reclamos. Verifica la conexión con Google Sheets.")
 
 # --------------------------
 # INTERFAZ PRINCIPAL
