@@ -4,7 +4,7 @@ Configuración central de la aplicación
 
 # Configuración de Google Sheets
 SHEET_ID = "13R_3Mdr25Jd-nGhK7CxdcbKkFWLc0LPdYrOLOY8sZJo"
-WORKSHEET_RECLAMOS = "Principal"
+WORKSHEET_RECLAMOS = "Reclamos"
 WORKSHEET_CLIENTES = "Clientes"
 
 # Columnas esperadas
