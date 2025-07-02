@@ -185,7 +185,7 @@ if opcion == "Inicio":
                     telefono = st.text_input("📞 Teléfono", value=cliente_existente.get("Teléfono", ""))
             else:
                 with col1:
-                    sector = st.text_input("🏩 Sector / Zona", placeholder="Ej: Centro, Norte, Sur")
+                    sector = st.text_input("🏩 Sector / Zona", placeholder="Coloque numero de sector")
                     direccion = st.text_input("📍 Dirección", placeholder="Dirección completa")
                 with col2:
                     nombre = st.text_input("👤 Nombre del Cliente", placeholder="Nombre completo")
