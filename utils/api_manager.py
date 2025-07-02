@@ -7,10 +7,18 @@ from config.settings import API_DELAY, BATCH_DELAY
 
 class APIManager:
     def __init__(self):
-        if 'last_api_call' not in st.session_state:
-            st.session_state.last_api_call = 0
-        if 'api_call_count' not in st.session_state:
-            st.session_state.api_call_count = 0
+        # Inicialización robusta de session_state
+        self._init_session_state()
+    
+    def _init_session_state(self):
+        """Garantiza que las variables de sesión existan"""
+        defaults = {
+            'last_api_call': 0,
+            'api_calls_count': 0  # Nombre consistente (agregada la 's')
+        }
+        for key, value in defaults.items():
+            if key not in st.session_state:
+                st.session_state[key] = value
     
     def wait_for_rate_limit(self, is_batch=False):
         """Espera el tiempo necesario para respetar el rate limit"""
@@ -23,8 +31,9 @@ class APIManager:
             wait_time = delay - time_since_last_call
             time.sleep(wait_time)
         
-        st.session_state.last_api_call = time.time()
-        st.session_state.api_call_count += 1
+        # Actualiza con nombres consistentes
+        st.session_state.last_api_call = current_time
+        st.session_state.api_calls_count += 1  # Ahora con 's'
     
     def safe_sheet_operation(self, operation, *args, is_batch=False, **kwargs):
         """Ejecuta una operación de sheet de forma segura con rate limiting"""
@@ -39,10 +48,14 @@ class APIManager:
     
     def get_api_stats(self):
         """Retorna estadísticas de uso de la API"""
+        # Usa .get() como fallback para evitar errores
         return {
-            'total_calls': st.session_state.api_call_count,
-            'last_call': st.session_state.last_api_call
+            'total_calls': st.session_state.get('api_calls_count', 0),
+            'last_call': st.session_state.get('last_api_call', 0)
         }
 
-# Instancia global del manager
-api_manager = APIManager()
+# Instancia global del manager (mejorada para evitar reinstanciación)
+if 'api_manager' not in st.session_state:
+    st.session_state.api_manager = APIManager()
+
+api_manager = st.session_state.api_manager
