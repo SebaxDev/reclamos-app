@@ -214,7 +214,7 @@ if opcion == "Inicio":
                     try:
                         # Preparar datos
                         argentina = pytz.timezone("America/Argentina/Buenos_Aires")
-                        fecha_hora = datetime.now(argentina).strftime("%Y-%m-%d %H:%M:%S")
+                        fecha_hora = datetime.now(argentina).strftime("%d/%m/%Y %H:%M:%S")
 
                         fila_reclamo = [
                             fecha_hora, nro_cliente, sector, nombre.upper(),
@@ -939,7 +939,7 @@ elif opcion == "Cierre de Reclamos":
                                 # Si hay columna de fecha de resolución, agregarla
                                 if len(COLUMNAS_RECLAMOS) > 12:
                                     argentina = pytz.timezone("America/Argentina/Buenos_Aires")
-                                    fecha_resolucion = datetime.now(argentina).strftime("%Y-%m-%d %H:%M:%S")
+                                    fecha_resolucion = datetime.now(argentina).strftime("%d/%m/%Y %H:%M:%S")
                                     updates.append({"range": f"M{i + 2}", "values": [[fecha_resolucion]]})
                                 
                                 # Actualizar precinto si se modificó

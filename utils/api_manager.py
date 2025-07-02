@@ -1,62 +1,156 @@
 """
-Gestor de API para controlar las llamadas a Google Sheets
-Versión 3.1 - Solución definitiva para errores de session_state
+Módulo para gestión segura de datos con Google Sheets
+Versión 3.0 - Con manejo robusto de errores y compatibilidad con API
 """
-import time
+import pandas as pd
 import streamlit as st
-from config.settings import API_DELAY, BATCH_DELAY
+from google.oauth2 import service_account
+import gspread
+from utils.api_manager import api_manager
 
-def init_api_session_state():
-    """Inicializa todas las variables necesarias en session_state"""
-    required_vars = {
-        'last_api_call': 0,
-        'api_calls_count': 0,
-        'api_error_count': 0,
-        'last_api_error': None,
-        'api_initialized': True
-    }
+def safe_get_sheet_data(sheet, expected_columns):
+    """
+    Obtiene datos de una hoja de cálculo con validación de columnas
     
-    for var, default in required_vars.items():
-        if var not in st.session_state:
-            st.session_state[var] = default
-
-class APIManager:
-    def __init__(self):
-        init_api_session_state()  # Asegurar inicialización
-    
-    def wait_for_rate_limit(self, is_batch=False):
-        current_time = time.time()
-        elapsed = current_time - st.session_state.last_api_call
-        delay = BATCH_DELAY if is_batch else API_DELAY
+    Args:
+        sheet: Objeto de hoja de cálculo de gspread
+        expected_columns: Lista de columnas esperadas
         
-        if elapsed < delay:
-            time.sleep(delay - elapsed)
+    Returns:
+        DataFrame con los datos o DataFrame vacío si hay error
+    """
+    try:
+        # Obtener todos los registros
+        records = sheet.get_all_records()
+        df = pd.DataFrame(records)
         
-        st.session_state.last_api_call = time.time()
-        st.session_state.api_calls_count += 1
+        # Validar columnas
+        missing_cols = [col for col in expected_columns if col not in df.columns]
+        if missing_cols:
+            st.warning(f"Advertencia: Faltan columnas {missing_cols} en la hoja")
+            # Agregar columnas faltantes vacías
+            for col in missing_cols:
+                df[col] = ""
+        
+        return df
     
-    def safe_sheet_operation(self, operation, *args, is_batch=False, **kwargs):
-        try:
-            self.wait_for_rate_limit(is_batch)
-            result = operation(*args, **kwargs)
-            return result, None
-        except Exception as e:
-            error_msg = str(e)
-            st.session_state.api_error_count += 1
-            st.session_state.last_api_error = error_msg
-            return None, f"Error en operación de API: {error_msg}"
+    except Exception as e:
+        st.error(f"Error al obtener datos: {str(e)}")
+        # Devolver DataFrame vacío con columnas esperadas
+        return pd.DataFrame(columns=expected_columns)
+
+def safe_normalize(df, column_name):
+    """
+    Normaliza una columna asegurando tipo string y sin valores nulos
     
-    def get_api_stats(self):
-        return {
-            'total_calls': st.session_state.api_calls_count,
-            'last_call': st.session_state.last_api_call,
-            'error_count': st.session_state.api_error_count,
-            'last_error': st.session_state.last_api_error or 'N/A'
-        }
+    Args:
+        df: DataFrame a normalizar
+        column_name: Nombre de la columna a normalizar
+        
+    Returns:
+        DataFrame con la columna normalizada
+    """
+    try:
+        if column_name in df.columns:
+            df[column_name] = df[column_name].astype(str).str.strip().fillna("")
+        return df
+    except Exception as e:
+        st.warning(f"Advertencia: No se pudo normalizar {column_name}: {str(e)}")
+        return df
 
-# Inicialización global segura
-if 'global_api_manager' not in st.session_state:
-    init_api_session_state()
-    st.session_state.global_api_manager = APIManager()
+def update_sheet_data(sheet, data, is_batch=False):
+    """
+    Actualiza datos en una hoja de cálculo con manejo seguro de errores
+    
+    Args:
+        sheet: Objeto de hoja de cálculo
+        data: Datos a escribir (lista o lista de listas)
+        is_batch: Si es True, data es una lista de filas
+        
+    Returns:
+        tuple: (success, error)
+    """
+    try:
+        # Limpieza y conversión de datos
+        def clean_value(value):
+            if value is None:
+                return ""
+            if isinstance(value, (int, float)):
+                return str(int(value)) if value == int(value) else str(value)
+            return str(value).strip()
+        
+        if is_batch:
+            # Operación por lotes
+            cleaned_data = []
+            for row in data:
+                cleaned_row = [clean_value(value) for value in row]
+                cleaned_data.append(cleaned_row)
+            
+            result, error = api_manager.safe_sheet_operation(
+                sheet.update,
+                cleaned_data,
+                is_batch=True
+            )
+        else:
+            # Operación de una sola fila
+            cleaned_data = [clean_value(value) for value in data]
+            
+            result, error = api_manager.safe_sheet_operation(
+                sheet.append_row,
+                cleaned_data
+            )
+        
+        return (True, None) if result else (False, error)
+        
+    except Exception as e:
+        error_msg = f"Error en actualización: {str(e)}"
+        st.error(error_msg)
+        return False, error_msg
 
-api_manager = st.session_state.global_api_manager
+def batch_update_sheet(sheet, updates):
+    """
+    Actualización por lotes con formato específico para celdas
+    
+    Args:
+        sheet: Objeto de hoja de cálculo
+        updates: Lista de dicts con formato {'range': 'A1:B2', 'values': [[...]]}
+        
+    Returns:
+        tuple: (success, error)
+    """
+    try:
+        # Validar formato de updates
+        for update in updates:
+            if not all(key in update for key in ('range', 'values')):
+                raise ValueError("Formato incorrecto en updates")
+        
+        result, error = api_manager.safe_sheet_operation(
+            sheet.batch_update,
+            updates,
+            is_batch=True
+        )
+        
+        return (True, None) if result else (False, error)
+        
+    except Exception as e:
+        error_msg = f"Error en batch update: {str(e)}"
+        st.error(error_msg)
+        return False, error_msg
+
+def validate_sheet_connection(sheet):
+    """
+    Valida que la conexión con la hoja sea funcional
+    
+    Args:
+        sheet: Objeto de hoja de cálculo
+        
+    Returns:
+        bool: True si la conexión es válida
+    """
+    try:
+        # Intenta obtener el título como prueba de conexión
+        sheet.title
+        return True
+    except Exception as e:
+        st.error(f"Conexión inválida con la hoja: {str(e)}")
+        return False
