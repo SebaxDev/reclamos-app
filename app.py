@@ -19,15 +19,17 @@ from components.navigation import render_navigation, render_user_info
 from components.metrics_dashboard import render_metrics_dashboard
 from utils.styles import get_main_styles
 from utils.data_manager import safe_get_sheet_data, safe_normalize, update_sheet_data, batch_update_sheet
-from utils.api_manager import api_manager
+from utils.api_manager import api_manager, init_api_session_state  # Import modificado
 from config.settings import *
 
-# INICIALIZACIÓN SEGURA (AGREGA ESTO JUSTO AQUÍ)
 # --------------------------------------------------
-if 'api_initialized' not in st.session_state:
-    from utils.api_manager import APIManager  # <-- Import adicional aquí
-    APIManager()._init_session_state()  # Forzar inicialización
-    st.session_state.api_initialized = True
+# INICIALIZACIÓN GARANTIZADA
+# --------------------------------------------------
+if 'app_initialized' not in st.session_state:
+    init_api_session_state()  # Inicializa API
+    st.session_state.app_initialized = True  # Marcar app como inicializada
+    st.session_state.df_reclamos = pd.DataFrame()  # Dataframes iniciales
+    st.session_state.df_clientes = pd.DataFrame()
 # --------------------------
 # INICIALIZACIONES
 # --------------------------
