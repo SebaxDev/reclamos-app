@@ -239,6 +239,56 @@ def generar_pdf_reclamo(reclamo_data):
     buffer.seek(0)
     return buffer
 
+def generar_pdf_multiple_reclamos(reclamos_df):
+    """Genera un PDF con múltiples reclamos"""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    styles = getSampleStyleSheet()
+    story = []
+    
+    # Título
+    title = Paragraph("REPORTE MÚLTIPLE DE RECLAMOS", styles['Title'])
+    story.append(title)
+    story.append(Spacer(1, 20))
+    
+    # Información general
+    info_text = f"Fecha de generación: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}<br/>Total de reclamos: {len(reclamos_df)}"
+    info = Paragraph(info_text, styles['Normal'])
+    story.append(info)
+    story.append(Spacer(1, 20))
+    
+    # Tabla con todos los reclamos
+    data = [['ID', 'Cliente', 'Tipo', 'Estado', 'Prioridad', 'Fecha']]
+    
+    for idx, reclamo in reclamos_df.iterrows():
+        data.append([
+            str(reclamo['id']),
+            str(reclamo['cliente_nombre'])[:20],
+            str(reclamo['tipo_reclamo'])[:15],
+            str(reclamo['estado']),
+            str(reclamo['prioridad']),
+            str(reclamo['fecha_creacion'])[:10]
+        ])
+    
+    table = Table(data, colWidths=[40, 100, 80, 60, 60, 70])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    
+    story.append(table)
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
 # SECCIÓN: INICIO
 def seccion_inicio():
     st.title("🏢 Sistema de Gestión de Reclamos - Fusion")
@@ -634,202 +684,6 @@ def seccion_editar_cliente():
                 else:
                     st.error("❌ Complete todos los campos obligatorios")
 
-# NAVEGACIÓN PRINCIPAL
-def main():
-    st.sidebar.title("🏢 Fusion Reclamos")
-    st.sidebar.markdown("---")
-    
-    # Menú de navegación
-    opciones = {
-        "🏠 Inicio": seccion_inicio,
-        "📝 Nuevo Reclamo": seccion_nuevo_reclamo,
-        "📋 Reclamos Cargados": seccion_reclamos_cargados,
-        "🔧 Seguimiento Técnico": seccion_seguimiento_tecnico,
-        "📚 Historial por Cliente": seccion_historial_cliente,
-        "✏️ Editar Cliente": seccion_editar_cliente,
-    }
-    
-    seleccion = st.sidebar.radio("Navegación", list(opciones.keys()))
-    
-    # Información de conexión en sidebar
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🔗 Estado de Conexión")
-    
-    conn = get_connection()
-    if conn:
-        st.sidebar.success("✅ Conectado a la base de datos")
-        conn.close()
-    else:
-        st.sidebar.error("❌ Error de conexión")
-    
-    st.sidebar.markdown("---")
-    st.sidebar.info("💡 **Tip:** Use los filtros para encontrar reclamos específicos más rápidamente.")
-    
-    # Ejecutar la sección seleccionada
-    opciones[seleccion]()
-
-if __name__ == "__main__":
-    main()
-            with col2:
-                st.subheader("🔄 Actualizar Estado")
-                
-                nuevo_estado = st.selectbox(
-                    "Estado:",
-                    ["Pendiente", "En Proceso", "Resuelto", "Cerrado"],
-                    index=["Pendiente", "En Proceso", "Resuelto", "Cerrado"].index(reclamo['estado']),
-                    key=f"estado_{reclamo['id']}"
-                )
-                
-                tecnico = st.text_input(
-                    "Técnico Asignado:",
-                    value=reclamo['tecnico'] or "",
-                    key=f"tecnico_{reclamo['id']}"
-                )
-                
-                if st.button(f"💾 Actualizar", key=f"actualizar_{reclamo['id']}", type="primary"):
-                    if actualizar_estado_reclamo(reclamo['id'], nuevo_estado, tecnico):
-                        st.success("✅ Reclamo actualizado exitosamente")
-                        st.rerun()
-                    else:
-                        st.error("❌ Error al actualizar el reclamo")
-
-# SECCIÓN: HISTORIAL POR CLIENTE
-def seccion_historial_cliente():
-    st.title("📚 Historial por Cliente")
-    st.markdown("---")
-    
-    clientes_df = cargar_clientes()
-    
-    if clientes_df.empty:
-        st.info("👥 No hay clientes registrados")
-        return
-    
-    # Selector de cliente
-    cliente_seleccionado = st.selectbox(
-        "Seleccionar Cliente:",
-        options=clientes_df['nro_cliente'].tolist(),
-        format_func=lambda x: f"{x} - {clientes_df[clientes_df['nro_cliente'] == x]['nombre'].iloc[0]}"
-    )
-    
-    if cliente_seleccionado:
-        # Información del cliente
-        cliente_info = clientes_df[clientes_df['nro_cliente'] == cliente_seleccionado].iloc[0]
-        
-        st.subheader(f"👤 Información del Cliente")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.write(f"**Número:** {cliente_info['nro_cliente']}")
-            st.write(f"**Nombre:** {cliente_info['nombre']}")
-            st.write(f"**Dirección:** {cliente_info['direccion']}")
-        
-        with col2:
-            st.write(f"**Teléfono:** {cliente_info['telefono']}")
-            st.write(f"**Email:** {cliente_info.get('email', 'No registrado')}")
-            st.write(f"**Sector:** {cliente_info['sector']}")
-        
-        st.markdown("---")
-        
-        # Historial de reclamos
-        reclamos_df = cargar_reclamos()
-        reclamos_cliente = reclamos_df[reclamos_df['nro_cliente'] == cliente_seleccionado]
-        
-        if reclamos_cliente.empty:
-            st.info("📭 Este cliente no tiene reclamos registrados")
-        else:
-            st.subheader(f"📋 Historial de Reclamos ({len(reclamos_cliente)})")
-            
-            # Estadísticas del cliente
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric("Total Reclamos", len(reclamos_cliente))
-            
-            with col2:
-                pendientes = len(reclamos_cliente[reclamos_cliente['estado'] == 'Pendiente'])
-                st.metric("Pendientes", pendientes)
-            
-            with col3:
-                resueltos = len(reclamos_cliente[reclamos_cliente['estado'] == 'Resuelto'])
-                st.metric("Resueltos", resueltos)
-            
-            # Lista de reclamos
-            for idx, reclamo in reclamos_cliente.iterrows():
-                with st.expander(f"🎫 Reclamo #{reclamo['id']} - {reclamo['tipo_reclamo']} - {reclamo['estado']}"):
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.write(f"**📌 Tipo:** {reclamo['tipo_reclamo']}")
-                        st.write(f"**📊 Estado:** {reclamo['estado']}")
-                        st.write(f"**⚡ Prioridad:** {reclamo['prioridad']}")
-                        st.write(f"**📅 Fecha Creación:** {reclamo['fecha_creacion']}")
-                    
-                    with col2:
-                        st.write(f"**👨‍🔧 Técnico:** {reclamo['tecnico'] or 'No asignado'}")
-                        if reclamo['fecha_resolucion']:
-                            st.write(f"**✅ Fecha Resolución:** {reclamo['fecha_resolucion']}")
-                        if reclamo['precinto']:
-                            st.write(f"**🔒 Precinto:** {reclamo['precinto']}")
-                    
-                    st.write(f"**📄 Detalles:** {reclamo['detalles']}")
-
-# SECCIÓN: EDITAR CLIENTE
-def seccion_editar_cliente():
-    st.title("✏️ Editar Cliente")
-    st.markdown("---")
-    
-    clientes_df = cargar_clientes()
-    
-    if clientes_df.empty:
-        st.info("👥 No hay clientes registrados")
-        return
-    
-    # Selector de cliente
-    cliente_seleccionado = st.selectbox(
-        "Seleccionar Cliente a Editar:",
-        options=clientes_df['nro_cliente'].tolist(),
-        format_func=lambda x: f"{x} - {clientes_df[clientes_df['nro_cliente'] == x]['nombre'].iloc[0]}"
-    )
-    
-    if cliente_seleccionado:
-        cliente_info = clientes_df[clientes_df['nro_cliente'] == cliente_seleccionado].iloc[0]
-        
-        with st.form("editar_cliente_form"):
-            st.subheader(f"📝 Editando Cliente: {cliente_info['nombre']}")
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                nro_cliente = st.text_input("Número de Cliente", value=cliente_info['nro_cliente'], disabled=True)
-                nombre = st.text_input("Nombre *", value=cliente_info['nombre'])
-                direccion = st.text_input("Dirección *", value=cliente_info['direccion'])
-            
-            with col2:
-                telefono = st.text_input("Teléfono *", value=cliente_info['telefono'])
-                email = st.text_input("Email", value=cliente_info.get('email', ''))
-                sector = st.selectbox("Sector *", 
-                                    ["Residencial", "Comercial", "Industrial", "Rural"],
-                                    index=["Residencial", "Comercial", "Industrial", "Rural"].index(cliente_info['sector']))
-            
-            submitted = st.form_submit_button("💾 Guardar Cambios", type="primary")
-            
-            if submitted:
-                if nombre and direccion and telefono and sector:
-                    query = """
-                    UPDATE clientes 
-                    SET nombre=%s, direccion=%s, telefono=%s, email=%s, sector=%s
-                    WHERE nro_cliente=%s
-                    """
-                    params = (nombre, direccion, telefono, email, sector, nro_cliente)
-                    
-                    if ejecutar_consulta(query, params, fetch=False):
-                        st.success("✅ Cliente actualizado exitosamente")
-                        st.rerun()
-                    else:
-                        st.error("❌ Error al actualizar el cliente")
-                else:
-                    st.error("❌ Complete todos los campos obligatorios")
-
 # SECCIÓN: IMPRIMIR RECLAMOS
 def seccion_imprimir_reclamos():
     st.title("🖨️ Imprimir Reclamos")
@@ -905,56 +759,6 @@ def seccion_imprimir_reclamos():
                 file_name=f"reclamos_filtrados_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
                 mime="application/pdf"
             )
-
-def generar_pdf_multiple_reclamos(reclamos_df):
-    """Genera un PDF con múltiples reclamos"""
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4)
-    styles = getSampleStyleSheet()
-    story = []
-    
-    # Título
-    title = Paragraph("REPORTE MÚLTIPLE DE RECLAMOS", styles['Title'])
-    story.append(title)
-    story.append(Spacer(1, 20))
-    
-    # Información general
-    info_text = f"Fecha de generación: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}<br/>Total de reclamos: {len(reclamos_df)}"
-    info = Paragraph(info_text, styles['Normal'])
-    story.append(info)
-    story.append(Spacer(1, 20))
-    
-    # Tabla con todos los reclamos
-    data = [['ID', 'Cliente', 'Tipo', 'Estado', 'Prioridad', 'Fecha']]
-    
-    for idx, reclamo in reclamos_df.iterrows():
-        data.append([
-            str(reclamo['id']),
-            str(reclamo['cliente_nombre'])[:20],
-            str(reclamo['tipo_reclamo'])[:15],
-            str(reclamo['estado']),
-            str(reclamo['prioridad']),
-            str(reclamo['fecha_creacion'])[:10]
-        ])
-    
-    table = Table(data, colWidths=[40, 100, 80, 60, 60, 70])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 8),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
-    ]))
-    
-    story.append(table)
-    doc.build(story)
-    buffer.seek(0)
-    return buffer
 
 # SECCIÓN: CIERRE DE RECLAMOS
 def seccion_cierre_reclamos():
