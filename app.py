@@ -255,55 +255,61 @@ if opcion == "Inicio":
 
 # --------------------------
 # SECCIÓN 2: RECLAMOS CARGADOS
-# --------------------------
-# Distribución por tipo de reclamo (activos)
-df_activos = df[df["Estado"].isin(["Pendiente", "En curso"])]
-
-if not df_activos.empty:
-    conteo_por_tipo = df_activos["Tipo de reclamo"].value_counts().sort_index()
-
-    st.markdown("#### 📊 Distribución de reclamos activos por tipo")
-    st.markdown('<div style="margin-top: -10px; margin-bottom: 10px;">', unsafe_allow_html=True)
-
-    tipos = list(conteo_por_tipo.index)
-    cantidad = list(conteo_por_tipo.values)
-
-    cols_per_row = 4
-    for i in range(0, len(tipos), cols_per_row):
-        cols = st.columns(cols_per_row)
-        for j, col in enumerate(cols):
-            if i + j < len(tipos):
-                with col:
-                    tipo = tipos[i + j]
-                    cant = cantidad[i + j]
-                    st.markdown(f"""
-                        <div style="text-align: center; padding: 8px 5px; border-radius: 10px; background-color: #f8f9fa; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                            <h5 style="margin: 0; font-size: 0.75rem; color: #6c757d;">{tipo}</h5>
-                            <h4 style="margin: 2px 0 0 0; color: #0d6efd;">{cant}</h4>
-                        </div>
-                    """, unsafe_allow_html=True)
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
+# ----------------------------
 elif opcion == "Reclamos cargados":
     st.markdown('<div class="section-container">', unsafe_allow_html=True)
     st.subheader("📊 Gestión de reclamos cargados")
 
     try:
-        # Preparación de datos
+        # Copia del dataframe original
         df = df_reclamos.copy()
+
+        # Normalización de columnas clave
         df_clientes["Nº Cliente"] = df_clientes["Nº Cliente"].astype(str).str.strip()
         df["Nº Cliente"] = df["Nº Cliente"].astype(str).str.strip()
-        
-        # Merge con datos de clientes
-        df = pd.merge(df, df_clientes[["Nº Cliente", "N° de Precinto"]], 
-                     on="Nº Cliente", how="left", suffixes=("", "_cliente"))
-        
+
+        # Merge con datos del cliente
+        df = pd.merge(df, df_clientes[["Nº Cliente", "N° de Precinto", "Teléfono"]], 
+                      on="Nº Cliente", how="left", suffixes=("", "_cliente"))
+
         # Procesamiento de fechas
         df["Fecha y hora"] = pd.to_datetime(df["Fecha y hora"], errors="coerce")
         df = df.sort_values("Fecha y hora", ascending=False)
 
-        # Filtros
+        # ==============================
+        # MINI PANEL: Reclamos por tipo
+        # ==============================
+        df_activos = df[df["Estado"].isin(["Pendiente", "En curso"])]
+
+        if not df_activos.empty:
+            conteo_por_tipo = df_activos["Tipo de reclamo"].value_counts().sort_index()
+
+            st.markdown("#### 📊 Distribución de reclamos activos por tipo")
+            st.markdown('<div style="margin-top: -10px; margin-bottom: 10px;">', unsafe_allow_html=True)
+
+            tipos = list(conteo_por_tipo.index)
+            cantidad = list(conteo_por_tipo.values)
+
+            cols_per_row = 4
+            for i in range(0, len(tipos), cols_per_row):
+                cols = st.columns(cols_per_row)
+                for j, col in enumerate(cols):
+                    if i + j < len(tipos):
+                        tipo = tipos[i + j]
+                        cant = cantidad[i + j]
+                        with col:
+                            st.markdown(f"""
+                                <div style="text-align: center; padding: 8px 5px; border-radius: 10px; background-color: #f8f9fa; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                    <h5 style="margin: 0; font-size: 0.75rem; color: #6c757d;">{tipo}</h5>
+                                    <h4 style="margin: 2px 0 0 0; color: #0d6efd;">{cant}</h4>
+                                </div>
+                            """, unsafe_allow_html=True)
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # ==============================
+        # FILTROS
+        # ==============================
         st.markdown("#### 🔍 Filtros de búsqueda")
         col1, col2, col3 = st.columns(3)
         
@@ -315,74 +321,72 @@ elif opcion == "Reclamos cargados":
             filtro_tipo = st.selectbox("Tipo de reclamo", ["Todos"] + sorted(df["Tipo de reclamo"].unique()))
 
         # Aplicar filtros
+        df_filtrado = df.copy()
         if filtro_estado != "Todos":
-            df = df[df["Estado"] == filtro_estado]
+            df_filtrado = df_filtrado[df_filtrado["Estado"] == filtro_estado]
         if filtro_sector != "Todos":
-            df = df[df["Sector"] == filtro_sector]
+            df_filtrado = df_filtrado[df_filtrado["Sector"] == filtro_sector]
         if filtro_tipo != "Todos":
-            df = df[df["Tipo de reclamo"] == filtro_tipo]
+            df_filtrado = df_filtrado[df_filtrado["Tipo de reclamo"] == filtro_tipo]
 
-        st.markdown(f"**Mostrando {len(df)} reclamos**")
+        st.markdown(f"**Mostrando {len(df_filtrado)} reclamos**")
 
-        # Editor de datos
-        edited_df = st.data_editor(
-            df,
-            use_container_width=True,
-            num_rows="dynamic",
-            key="editor_reclamos",
-            column_config={
-                "Estado": st.column_config.SelectboxColumn(
-                    "Estado", 
-                    options=["Pendiente", "En curso", "Resuelto"],
-                    help="Cambia el estado del reclamo"
-                ),
-                "Técnico": st.column_config.TextColumn(
-                    "Técnico asignado",
-                    help="Técnicos asignados al reclamo"
-                ),
-                "N° de Precinto": st.column_config.TextColumn(
-                    "N° de Precinto",
-                    help="Número de precinto del cliente"
-                )
-            },
-            hide_index=True
-        )
+        # ==============================
+        # TABLA NO EDITABLE
+        # ==============================
+        columnas_visibles = ["Fecha y hora", "Nº Cliente", "Nombre", "Sector", "Tipo de reclamo", "Teléfono"]
+        st.dataframe(df_filtrado[columnas_visibles], use_container_width=True, hide_index=True)
 
-        # Botón de guardar
-        if st.button("💾 Guardar cambios", key="guardar_reclamos", use_container_width=True):
-            with st.spinner("Guardando cambios..."):
-                try:
-                    # Procesar técnicos si están en formato lista
-                    if "Técnico" in edited_df.columns:
-                        edited_df["Técnico"] = edited_df["Técnico"].apply(
-                            lambda x: ", ".join(x) if isinstance(x, list) else x
+        # ==============================
+        # FORMULARIO DE EDICIÓN MANUAL
+        # ==============================
+        st.markdown("---")
+        st.markdown("### ✏️ Editar un reclamo puntual")
+
+        lista_clientes = df_filtrado["Nº Cliente"].unique().tolist()
+        cliente_seleccionado = st.selectbox("Seleccioná un Nº de Cliente para editar", [""] + lista_clientes)
+
+        if cliente_seleccionado:
+            reclamo_actual = df_filtrado[df_filtrado["Nº Cliente"] == cliente_seleccionado].iloc[0]
+
+            nuevo_estado = st.selectbox("Estado", ["Pendiente", "En curso", "Resuelto"], index=["Pendiente", "En curso", "Resuelto"].index(reclamo_actual["Estado"]))
+            nuevo_tecnico = st.text_input("Técnico asignado", value=reclamo_actual.get("Técnico", ""))
+            nuevo_precinto = st.text_input("N° de Precinto", value=reclamo_actual.get("N° de Precinto", ""))
+
+            if st.button("💾 Guardar cambios", key="guardar_reclamo_individual", use_container_width=True):
+                with st.spinner("Guardando cambios..."):
+                    try:
+                        # Buscar índice del reclamo en df original
+                        idx_original = df[df["Nº Cliente"] == cliente_seleccionado].index[0]
+
+                        df.loc[idx_original, "Estado"] = nuevo_estado
+                        df.loc[idx_original, "Técnico"] = nuevo_tecnico
+                        df.loc[idx_original, "N° de Precinto"] = nuevo_precinto
+
+                        # Convertir a string
+                        df = df.astype(str)
+
+                        # Guardar en hoja
+                        data_to_update = [df.columns.tolist()] + df.values.tolist()
+                        success, error = api_manager.safe_sheet_operation(
+                            sheet_reclamos.update,
+                            data_to_update,
+                            is_batch=True
                         )
 
-                    # Convertir todos los datos a string
-                    edited_df = edited_df.astype(str)
-
-                    # Actualizar hoja de reclamos
-                    data_to_update = [edited_df.columns.tolist()] + edited_df.values.tolist()
-                    success, error = api_manager.safe_sheet_operation(
-                        sheet_reclamos.update,
-                        data_to_update,
-                        is_batch=True
-                    )
-                    
-                    if success:
-                        st.success("✅ Cambios guardados correctamente.")
-                        st.cache_data.clear()
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        st.error(f"❌ Error al guardar: {error}")
-                        
-                except Exception as e:
-                    st.error(f"❌ Error al procesar los cambios: {str(e)}")
+                        if success:
+                            st.success("✅ Reclamo actualizado correctamente.")
+                            st.cache_data.clear()
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Error al guardar: {error}")
+                    except Exception as e:
+                        st.error(f"❌ Error al procesar: {str(e)}")
 
     except Exception as e:
         st.error(f"⚠️ Error en la gestión de reclamos: {str(e)}")
-    
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 # --------------------------
