@@ -632,15 +632,15 @@ elif opcion == "Imprimir reclamos":
                         y = height - 40
                         
                         # Encabezado
-                        c.setFont("Helvetica-Bold", 16)
+                        c.setFont("Helvetica-Bold", 18)
                         c.drawString(40, y, f"RECLAMOS PENDIENTES - {datetime.now().strftime('%d/%m/%Y')}")
                         y -= 30
                         
                         for i, (_, reclamo) in enumerate(reclamos_filtrados.iterrows()):
-                            c.setFont("Helvetica-Bold", 12)
+                            c.setFont("Helvetica-Bold", 16)
                             c.drawString(40, y, f"Reclamo #{reclamo['Nº Cliente']}")
                             y -= 15
-                            c.setFont("Helvetica", 10)
+                            c.setFont("Helvetica", 13)
                             
                             lineas = [
                                 f"Fecha: {reclamo['Fecha y hora']}",
@@ -662,7 +662,7 @@ elif opcion == "Imprimir reclamos":
                             if y < 100 and i < len(reclamos_filtrados) - 1:
                                 c.showPage()
                                 y = height - 40
-                                c.setFont("Helvetica-Bold", 16)
+                                c.setFont("Helvetica-Bold", 18)
                                 c.drawString(40, y, f"RECLAMOS PENDIENTES (cont.) - {datetime.now().strftime('%d/%m/%Y')}")
                                 y -= 30
 
