@@ -225,7 +225,7 @@ if opcion == "Inicio":
                         # Operación segura con API Manager
                         success, error = api_manager.safe_sheet_operation(
                             sheet_reclamos.append_row,
-                            [fila_reclamo]
+                            fila_reclamo
                         )
                         
                         if success:
@@ -236,7 +236,7 @@ if opcion == "Inicio":
                                 fila_cliente = [nro_cliente, sector, nombre.upper(), direccion.upper(), telefono, precinto]
                                 success_cliente, _ = api_manager.safe_sheet_operation(
                                     sheet_clientes.append_row,
-                                    [fila_cliente]
+                                    fila_cliente
                                 )
                                 if success_cliente:
                                     st.info("🗂️ Nuevo cliente agregado a la base de datos.")
@@ -511,7 +511,7 @@ elif opcion == "Editar cliente":
                         
                         success, error = api_manager.safe_sheet_operation(
                             sheet_clientes.append_row,
-                            [nueva_fila]
+                            nueva_fila
                         )
                         
                         if success:
