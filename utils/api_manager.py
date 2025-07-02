@@ -1,6 +1,6 @@
 """
 Gestor de API para controlar las llamadas a Google Sheets
-Versión 2.0 - Robustecida contra errores de session_state
+Versión 3.0 - Con inicialización robusta de session_state
 """
 import time
 import streamlit as st
@@ -16,7 +16,7 @@ class APIManager:
         required_vars = {
             'last_api_call': 0,            # Timestamp de última llamada
             'api_calls_count': 0,          # Contador total de llamadas
-            'api_error_count': 0,          # Contador de errores
+            'api_error_count': 0,          # Contador de errores (variable faltante)
             'last_api_error': None         # Último mensaje de error
         }
         
@@ -25,38 +25,30 @@ class APIManager:
                 st.session_state[var] = default
     
     def wait_for_rate_limit(self, is_batch=False):
-        """
-        Espera el tiempo necesario para respetar el rate limit
-        Args:
-            is_batch: Indica si es una operación por lotes (requiere más delay)
-        """
+        """Espera el tiempo necesario para respetar el rate limit"""
         current_time = time.time()
-        elapsed = current_time - st.session_state.last_api_call
+        time_since_last_call = current_time - st.session_state.last_api_call
+        
         delay = BATCH_DELAY if is_batch else API_DELAY
         
-        if elapsed < delay:
-            time.sleep(delay - elapsed)
+        if time_since_last_call < delay:
+            time.sleep(delay - time_since_last_call)
         
-        # Actualiza el estado después de la espera
         st.session_state.last_api_call = time.time()
         st.session_state.api_calls_count += 1
     
     def safe_sheet_operation(self, operation, *args, is_batch=False, **kwargs):
-        """
-        Ejecuta una operación de sheet con manejo de errores y rate limiting
-        Returns:
-            tuple: (resultado, error) donde error es None si fue exitoso
-        """
+        """Ejecuta una operación de sheet con manejo de errores y rate limiting"""
         try:
             self.wait_for_rate_limit(is_batch)
             result = operation(*args, **kwargs)
             return result, None
         except Exception as e:
             error_msg = str(e)
-            st.session_state.api_error_count += 1
+            # Actualizar contadores de error de forma segura
+            st.session_state.api_error_count = st.session_state.get('api_error_count', 0) + 1
             st.session_state.last_api_error = error_msg
             
-            # Log detallado solo en modo debug
             if st.secrets.get("DEBUG", False):
                 st.error(f"API Error [{st.session_state.api_error_count}]: {error_msg}")
             
@@ -71,7 +63,7 @@ class APIManager:
             'last_error': st.session_state.get('last_api_error', 'N/A')
         }
 
-# Patrón singleton para evitar múltiples instancias
+# Instancia singleton para evitar múltiples inicializaciones
 if 'global_api_manager' not in st.session_state:
     st.session_state.global_api_manager = APIManager()
 

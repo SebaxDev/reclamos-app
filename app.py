@@ -22,6 +22,12 @@ from utils.data_manager import safe_get_sheet_data, safe_normalize, update_sheet
 from utils.api_manager import api_manager
 from config.settings import *
 
+# INICIALIZACIÓN SEGURA (AGREGA ESTO JUSTO AQUÍ)
+# --------------------------------------------------
+if 'api_initialized' not in st.session_state:
+    from utils.api_manager import APIManager  # <-- Import adicional aquí
+    APIManager()._init_session_state()  # Forzar inicialización
+    st.session_state.api_initialized = True
 # --------------------------
 # INICIALIZACIONES
 # --------------------------
