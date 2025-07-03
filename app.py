@@ -48,9 +48,12 @@ st.markdown(get_main_styles(dark_mode=modo_oscuro), unsafe_allow_html=True)
 
 # Verificar autenticación
 if not check_authentication():
-    render_login()
+    render_login(sheet_usuarios)
     st.stop()
 
+# Obtener información del usuario actual
+user_info = st.session_state.auth.get('user_info', {})
+user_role = user_info.get('rol', '')
 # --------------------------
 # CONEXIÓN CON GOOGLE SHEETS
 # --------------------------
@@ -78,14 +81,15 @@ def init_google_sheets():
         try:
             sheet_reclamos = client.open_by_key(SHEET_ID).worksheet(WORKSHEET_RECLAMOS)
             sheet_clientes = client.open_by_key(SHEET_ID).worksheet(WORKSHEET_CLIENTES)
-            return sheet_reclamos, sheet_clientes
+            sheet_usuarios = client.open_by_key(SHEET_ID).worksheet(WORKSHEET_USUARIOS)
+            return sheet_reclamos, sheet_clientes, sheet_usuarios
         except gspread.WorksheetNotFound as e:
             raise ValueError(f"Hoja no encontrada: {str(e)}")
             
     except Exception as e:
         st.error(f"🔴 Error crítico al conectar con Google Sheets: {str(e)}")
         st.stop()
-        return None, None
+        return None, None, None
 
 # Inicializar conexión con Google Sheets
 with st.spinner("Conectando con Google Sheets..."):
@@ -140,7 +144,7 @@ opcion = render_navigation()
 # SECCIÓN 1: INICIO - NUEVO RECLAMO
 # --------------------------
 
-if opcion == "Inicio":
+if opcion == "Inicio" and has_permission('inicio'):
     st.markdown('<div class="section-container">', unsafe_allow_html=True)
     st.subheader("📝 Cargar nuevo reclamo")
 
@@ -267,7 +271,7 @@ if opcion == "Inicio":
 # --------------------------
 # SECCIÓN 2: RECLAMOS CARGADOS
 # ----------------------------
-elif opcion == "Reclamos cargados":
+elif opcion == "Reclamos cargados" and has_permission('reclamos_cargados'):
     st.markdown('<div class="section-container">', unsafe_allow_html=True)
     st.subheader("📊 Gestión de reclamos cargados")
 
@@ -424,7 +428,7 @@ elif opcion == "Reclamos cargados":
 # SECCIÓN 3: HISTORIAL POR CLIENTE
 # --------------------------
 
-elif opcion == "Historial por cliente":
+elif opcion == "Historial por cliente" and has_permission('historial_cliente'):
     st.markdown('<div class="section-container">', unsafe_allow_html=True)
     st.subheader("📜 Historial de reclamos por cliente")
     
@@ -479,7 +483,7 @@ elif opcion == "Historial por cliente":
 # SECCIÓN 4: EDITAR CLIENTE
 # --------------------------
 
-elif opcion == "Editar cliente":
+elif opcion == "Editar cliente" and user_role == 'admin':
     st.markdown('<div class="section-container">', unsafe_allow_html=True)
     st.subheader("🛠️ Editar datos de un cliente")
     
@@ -595,7 +599,7 @@ elif opcion == "Editar cliente":
 # SECCIÓN 5: IMPRIMIR RECLAMOS
 # --------------------------
 
-elif opcion == "Imprimir reclamos":
+elif opcion == "Imprimir reclamos" and has_permission('imprimir_reclamos'):
     st.markdown('<div class="section-container">', unsafe_allow_html=True)
     st.subheader("🖨️ Seleccionar reclamos para imprimir (formato técnico compacto)")
 
@@ -821,7 +825,7 @@ elif opcion == "Imprimir reclamos":
 # SECCIÓN 6: SEGUIMIENTO TÉCNICO
 # --------------------------
 
-elif opcion == "Seguimiento técnico":
+elif opcion == "Seguimiento técnico" and user_role == 'admin':
     st.markdown('<div class="section-container">', unsafe_allow_html=True)
     st.subheader("👷 Seguimiento técnico del reclamo")
     
@@ -997,7 +1001,7 @@ elif opcion == "Seguimiento técnico":
 # --------------------------
 # SECCIÓN 7: CIERRE DE RECLAMOS
 # --------------------------
-elif opcion == "Cierre de Reclamos":
+elif opcion == "Cierre de Reclamos" and user_role == 'admin':
     st.markdown('<div class="section-container">', unsafe_allow_html=True)
     st.subheader("✅ Cierre de reclamos en curso")
 
