@@ -136,17 +136,18 @@ user_role = user_info.get('rol', '')
 # --------------------------
 
 @st.cache_data(ttl=30, show_spinner="Cargando datos...")
-def load_data():
-    """Carga y procesa los datos de las hojas con validación mejorada"""
+def cargar_datos():
+    """Carga datos de Google Sheets con manejo de errores"""
     try:
+        # Cargar datos de las hojas
         df_reclamos = safe_get_sheet_data(sheet_reclamos, COLUMNAS_RECLAMOS)
         df_clientes = safe_get_sheet_data(sheet_clientes, COLUMNAS_CLIENTES)
         df_usuarios = safe_get_sheet_data(sheet_usuarios, COLUMNAS_USUARIOS)
         
         if df_reclamos.empty or df_clientes.empty:
-            st.warning("Advertencia: Algunas hojas están vacías o no tienen datos")
+            st.warning("⚠️ Algunas hojas están vacías")
         
-        # Normalización robusta
+        # Normalizar columnas clave
         for col in ["Nº Cliente", "N° de Precinto"]:
             df_clientes = safe_normalize(df_clientes, col)
             df_reclamos = safe_normalize(df_reclamos, col)
@@ -154,9 +155,13 @@ def load_data():
         return df_reclamos, df_clientes, df_usuarios
         
     except Exception as e:
-        st.error(f"Error al cargar datos: {str(e)}")
-        return pd.DataFrame(), pd.DataFrame()
+        st.error(f"❌ Error al cargar datos: {str(e)}")
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()  # Retorna 3 DataFrames vacíos
 
+# Cargar datos y guardar en session_state
+df_reclamos, df_clientes, df_usuarios = cargar_datos()
+st.session_state.df_reclamos = df_reclamos
+st.session_state.df_clientes = df_clientes
 
 # --------------------------
 # INTERFAZ PRINCIPAL
