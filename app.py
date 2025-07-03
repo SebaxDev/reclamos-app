@@ -157,6 +157,9 @@ def load_data():
         st.error(f"Error al cargar datos: {str(e)}")
         return pd.DataFrame(), pd.DataFrame()
 
+# Cargar datos
+df_reclamos, df_clientes, df_usuarios = load_data()
+
 # --------------------------
 # INTERFAZ PRINCIPAL
 # --------------------------
