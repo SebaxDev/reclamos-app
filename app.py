@@ -650,7 +650,7 @@ elif opcion == "Imprimir reclamos" and has_permission('imprimir_reclamos'):
         with st.expander("🕒 Reclamos pendientes de resolución", expanded=True):
             df_pendientes = df_merged[df_merged["Estado"] == "Pendiente"]
             if not df_pendientes.empty:
-                st.dataframe(df_pendientes[["Fecha y hora", "Nº Cliente", "Nombre", "Tipo de reclamo", "Técnico"]], 
+                st.dataframe(df_pendientes[["Fecha y hora", "Nº Cliente", "Nombre", "Dirección", "Sector", "Tipo de reclamo"]], 
                             use_container_width=True)
             else:
                 st.success("✅ No hay reclamos pendientes actualmente.")
