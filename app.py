@@ -166,7 +166,7 @@ st.session_state.df_clientes = df_clientes
 # --------------------------
 # INTERFAZ PRINCIPAL
 # --------------------------
-
+st.markdown("---")
 # Header
 st.title("📋 Fusion Reclamos App")
 
