@@ -101,37 +101,32 @@ def has_permission(required_permission):
     return required_permission in user_info.get('permisos', [])
 
 def render_user_info():
-    """Muestra información del usuario con estilo mejorado"""
-    if check_authentication():
-        user_info = st.session_state.auth['user_info']
+    """Versión mejorada con iconos y estilo"""
+    if not check_authentication():
+        return
         
-        # Personaliza ícono y color según el rol
-        if user_info['rol'] == 'admin':
-            rol_icono = "👑"
-            rol_color = "#FF5733"  # Rojo/naranja para admin
-        else:
-            rol_icono = "💼"
-            rol_color = "#338AFF"  # Azul para oficina
-
-        # Estilo mejorado con HTML/CSS
-        st.sidebar.markdown(f"""
-        <div style="
-            margin: 10px 0;
-            padding: 15px;
-            border-radius: 8px;
-            background-color: #f0f2f6;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        ">
-            <p style="margin: 0; font-weight: bold; font-size: 1.1rem;">
-                👋 ¡Bienvenido, <span style="color: #2c3e50;">{user_info['nombre']}</span>!
-            </p>
-            <p style="margin: 5px 0 0; font-size: 0.9rem;">
-                {rol_icono} <span style="color: {rol_color}; font-weight: bold;">{user_info['rol'].upper()}</span>
-            </p>
+    user_info = st.session_state.auth['user_info']
+    role_config = {
+        'admin': {'icon': '👑', 'color': '#FF5733'},
+        'oficina': {'icon': '💼', 'color': '#338AFF'}
+    }
+    config = role_config.get(user_info['rol'], {'icon': '👤', 'color': '#555'})
+    
+    with st.sidebar:
+        st.markdown("---")
+        st.markdown(f"""
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <span style="font-size: 1.5rem;">{config['icon']}</span>
+            <div>
+                <p style="margin: 0; font-weight: bold;">{user_info['nombre']}</p>
+                <p style="margin: 0; color: {config['color']}; font-size: 0.8rem;">
+                    {user_info['rol'].upper()}
+                </p>
+            </div>
         </div>
         """, unsafe_allow_html=True)
-
-        if st.sidebar.button("🚪 Cerrar sesión", key="logout_btn"):
+        
+        if st.button("🚪 Cerrar sesión", use_container_width=True):
             logout()
             st.rerun()
+        st.markdown("---")
