@@ -46,14 +46,6 @@ st.set_page_config(
 modo_oscuro = st.sidebar.toggle("🌙 Modo oscuro", value=False)
 st.markdown(get_main_styles(dark_mode=modo_oscuro), unsafe_allow_html=True)
 
-# Verificar autenticación
-if not check_authentication():
-    render_login(sheet_usuarios)
-    st.stop()
-
-# Obtener información del usuario actual
-user_info = st.session_state.auth.get('user_info', {})
-user_role = user_info.get('rol', '')
 # --------------------------
 # CONEXIÓN CON GOOGLE SHEETS
 # --------------------------
@@ -97,6 +89,14 @@ with st.spinner("Conectando con Google Sheets..."):
     if not sheet_reclamos or not sheet_clientes:
         st.stop()
 
+# Verificar autenticación
+if not check_authentication():
+    render_login(sheet_usuarios)
+    st.stop()
+
+# Obtener información del usuario actual
+user_info = st.session_state.auth.get('user_info', {})
+user_role = user_info.get('rol', '')
 # --------------------------
 # CARGA DE DATOS
 # --------------------------
@@ -107,6 +107,7 @@ def load_data():
     try:
         df_reclamos = safe_get_sheet_data(sheet_reclamos, COLUMNAS_RECLAMOS)
         df_clientes = safe_get_sheet_data(sheet_clientes, COLUMNAS_CLIENTES)
+        df_usuarios = safe_get_sheet_data(sheet_usuarios, COLUMNAS_USUARIOS)
         
         if df_reclamos.empty or df_clientes.empty:
             st.warning("Advertencia: Algunas hojas están vacías o no tienen datos")
@@ -123,7 +124,7 @@ def load_data():
         return pd.DataFrame(), pd.DataFrame()
 
 # Cargar datos
-df_reclamos, df_clientes = load_data()
+df_reclamos, df_clientes, df_usuarios = load_data()
 
 # --------------------------
 # INTERFAZ PRINCIPAL

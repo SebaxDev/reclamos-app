@@ -21,10 +21,8 @@ def init_auth_session():
 
 def logout():
     """Cierra la sesión del usuario"""
-    st.session_state.auth = {
-        'logged_in': False,
-        'user_info': None
-    }
+    st.session_state.auth = {'logged_in': False, 'user_info': None}
+    st.cache_data.clear()  # Limpiar caché de datos
 
 def verify_credentials(username, password, sheet_usuarios):
     """
