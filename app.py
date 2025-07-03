@@ -21,6 +21,7 @@ from utils.styles import get_main_styles
 from utils.data_manager import safe_get_sheet_data, safe_normalize, update_sheet_data, batch_update_sheet
 from utils.api_manager import api_manager, init_api_session_state  # Import modificado
 from config.settings import *
+from components.user_widget import show_user_widget
 
 # --------------------------------------------------
 # INICIALIZACIÓN GARANTIZADA
@@ -132,6 +133,7 @@ df_reclamos, df_clientes, df_usuarios = load_data()
 
 # Header
 st.title("📋 Fusion Reclamos App")
+show_user_widget()
 
 # Dashboard de métricas
 render_metrics_dashboard(df_reclamos)
@@ -1130,7 +1132,6 @@ elif opcion == "Cierre de Reclamos" and user_role == 'admin':
 # --------------------------
 # FOOTER
 # --------------------------
-render_user_info()
 st.markdown("---")
 st.markdown("### 📊 Estadísticas de la sesión")
 
