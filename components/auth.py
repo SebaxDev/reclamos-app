@@ -25,17 +25,21 @@ def logout():
     st.cache_data.clear()  # Limpiar caché de datos
 
 def verify_credentials(username, password, sheet_usuarios):
-    """
-    Verifica credenciales en texto plano
-    """
     try:
         df_usuarios = safe_get_sheet_data(sheet_usuarios, COLUMNAS_USUARIOS)
         
+        # Normalización de datos
+        df_usuarios["username"] = df_usuarios["username"].str.strip().str.lower()
+        df_usuarios["password"] = df_usuarios["password"].astype(str).str.strip()
+        
+        # Manejo flexible de campo 'activo'
+        df_usuarios["activo"] = df_usuarios["activo"].astype(str).str.upper().isin(["SI", "TRUE", "1", "SÍ", "VERDADERO"])
+        
         usuario = df_usuarios[
-            (df_usuarios["username"].str.lower() == username.lower()) & 
-            (df_usuarios["password"] == password) &  # Comparación directa
-            (df_usuarios["activo"] == True
-        )]
+            (df_usuarios["username"] == username.strip().lower()) & 
+            (df_usuarios["password"] == password.strip()) &
+            (df_usuarios["activo"])
+        ]
         
         if not usuario.empty:
             return {
