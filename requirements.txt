@@ -6,4 +6,3 @@ gspread
 pandas
 reportlab
 pytz
-plotly

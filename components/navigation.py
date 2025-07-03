@@ -14,8 +14,7 @@ def render_navigation():
         "✏️ Editar cliente", 
         "🖨️ Imprimir reclamos", 
         "👷 Seguimiento técnico", 
-        "✅ Cierre de Reclamos",
-        "📈 Estadísticas"
+        "✅ Cierre de Reclamos"
     ]
     
     # Crear navegación con iconos
