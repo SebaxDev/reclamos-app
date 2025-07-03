@@ -143,7 +143,7 @@ opcion = render_navigation()
 if opcion == "Inicio":
     st.markdown('<div class="section-container">', unsafe_allow_html=True)
     st.subheader("📝 Cargar nuevo reclamo")
-    
+
     nro_cliente = st.text_input("🔢 N° de Cliente", placeholder="Ingresa el número de cliente").strip()
     cliente_existente = None
     formulario_bloqueado = False
@@ -171,6 +171,22 @@ if opcion == "Inicio":
             st.error("⚠️ Este cliente ya tiene un reclamo sin resolver. No se puede cargar uno nuevo hasta que se cierre el anterior.")
             formulario_bloqueado = True
 
+            reclamo_vigente = reclamos_activos.sort_values("Fecha y hora", ascending=False).iloc[0]
+
+            with st.expander("🔍 Ver detalles del reclamo activo"):
+                st.markdown(f"**📅 Fecha del reclamo:** {reclamo_vigente['Fecha y hora']}")
+                st.markdown(f"**👤 Cliente:** {reclamo_vigente['Nombre']}")
+                st.markdown(f"**📌 Tipo de reclamo:** {reclamo_vigente['Tipo de reclamo']}")
+                st.markdown(f"**📝 Detalles:** {reclamo_vigente['Detalles'][:250]}{'...' if len(reclamo_vigente['Detalles']) > 250 else ''}")
+                st.markdown(f"**⚙️ Estado:** {reclamo_vigente['Estado']}")
+                st.markdown(f"**👷 Técnico asignado:** {reclamo_vigente.get('Técnico', 'No asignado') or 'No asignado'}")
+                st.markdown(f"**🙍‍♂️ Atendido por:** {reclamo_vigente.get('Atendido por', 'N/A')}")
+
+                if st.button("👷 Ir al seguimiento técnico"):
+                    st.session_state.opcion = "Seguimiento técnico"
+                    st.session_state.nro_cliente = nro_cliente
+                    st.rerun()
+
     if not formulario_bloqueado:
         with st.form("reclamo_formulario", clear_on_submit=True):
             col1, col2 = st.columns(2)
@@ -185,7 +201,7 @@ if opcion == "Inicio":
                     telefono = st.text_input("📞 Teléfono", value=cliente_existente.get("Teléfono", ""))
             else:
                 with col1:
-                    sector = st.text_input("🏩 Sector / Zona", placeholder="Coloque numero de sector")
+                    sector = st.text_input("🏩 Sector / Zona", placeholder="Coloque número de sector")
                     direccion = st.text_input("📍 Dirección", placeholder="Dirección completa")
                 with col2:
                     nombre = st.text_input("👤 Nombre del Cliente", placeholder="Nombre completo")
@@ -193,7 +209,7 @@ if opcion == "Inicio":
 
             tipo_reclamo = st.selectbox("📌 Tipo de Reclamo", TIPOS_RECLAMO)
             detalles = st.text_area("📝 Detalles del Reclamo", placeholder="Describe el problema o solicitud...", height=100)
-            
+
             col3, col4 = st.columns(2)
             with col3:
                 precinto = st.text_input("🔒 N° de Precinto (opcional)", 
@@ -228,10 +244,10 @@ if opcion == "Inicio":
                             sheet_reclamos.append_row,
                             fila_reclamo
                         )
-                        
+
                         if success:
                             st.success("✅ Reclamo guardado correctamente.")
-                            
+
                             # Agregar cliente si es nuevo
                             if nro_cliente not in df_clientes["Nº Cliente"].values:
                                 fila_cliente = [nro_cliente, sector, nombre.upper(), direccion.upper(), telefono, precinto]
@@ -241,7 +257,7 @@ if opcion == "Inicio":
                                 )
                                 if success_cliente:
                                     st.info("🗂️ Nuevo cliente agregado a la base de datos.")
-                            
+
                             # Limpiar cache y refrescar
                             st.cache_data.clear()
                             time.sleep(1)
@@ -250,7 +266,7 @@ if opcion == "Inicio":
                             st.error(f"❌ Error al guardar: {error}")
                     except Exception as e:
                         st.error(f"❌ Error inesperado: {str(e)}")
-    
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 # --------------------------
