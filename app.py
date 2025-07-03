@@ -132,7 +132,6 @@ df_reclamos, df_clientes, df_usuarios = load_data()
 
 # Header
 st.title("📋 Fusion Reclamos App")
-render_user_info()
 
 # Dashboard de métricas
 render_metrics_dashboard(df_reclamos)
@@ -1131,7 +1130,7 @@ elif opcion == "Cierre de Reclamos" and user_role == 'admin':
 # --------------------------
 # FOOTER
 # --------------------------
-
+render_user_info()
 st.markdown("---")
 st.markdown("### 📊 Estadísticas de la sesión")
 
