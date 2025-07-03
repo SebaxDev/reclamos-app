@@ -43,45 +43,42 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# =============================================
-# 👇 Código para modo oscuro automático (INICIO)
-# =============================================
-def check_system_dark_mode():
-    return """
-    <script>
-    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const isSystemDark = darkModeMediaQuery.matches;
-    window.parent.postMessage({
-        type: 'streamlit:setComponentValue',
-        value: isSystemDark
-    }, '*');
-    </script>
-    """
+# 1. Función para detectar modo oscuro del sistema
+def is_system_dark_mode():
+    import platform
+    if platform.system() == "Windows":
+        import winreg
+        try:
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+            value = winreg.QueryValueEx(key, "AppsUseLightTheme")[0]
+            return value == 0  # 0 = oscuro, 1 = claro
+        except:
+            return False
+    elif platform.system() == "Darwin":  # macOS
+        import subprocess
+        try:
+            result = subprocess.run(['defaults', 'read', '-g', 'AppleInterfaceStyle'], capture_output=True, text=True)
+            return "Dark" in result.stdout
+        except:
+            return False
+    else:  # Linux/otros
+        return False
 
-# Inicializa la variable si no existe
+# 2. Inicializar modo oscuro
 if 'modo_oscuro' not in st.session_state:
-    st.session_state.modo_oscuro = False
+    st.session_state.modo_oscuro = is_system_dark_mode()
 
-# Ejecuta el JavaScript para detectar el modo del sistema
-st.components.v1.html(check_system_dark_mode(), height=0)
-
-# Actualiza el estado (opcional, para sincronizar con el toggle)
-modo_oscuro = st.session_state.modo_oscuro
-# =============================================
-# 👆 Código para modo oscuro automático (FIN)
-# =============================================
-
-# Sidebar (ahora con toggle sincronizado)
+# 3. Sidebar con toggle
 with st.sidebar:
-    modo_oscuro = st.toggle(
+    st.session_state.modo_oscuro = st.toggle(
         "🌙 Modo oscuro",
-        value=st.session_state.modo_oscuro,  # Usa el valor detectado
+        value=st.session_state.modo_oscuro,
         key="dark_mode_toggle"
     )
-    show_user_widget()  # Widget de usuario debajo del toggle
+    show_user_widget()
 
-# Aplica estilos
-st.markdown(get_main_styles(dark_mode=modo_oscuro), unsafe_allow_html=True)
+# 4. Aplicar estilos
+st.markdown(get_main_styles(dark_mode=st.session_state.modo_oscuro), unsafe_allow_html=True)
 
 # --------------------------
 # CONEXIÓN CON GOOGLE SHEETS
@@ -159,9 +156,6 @@ def load_data():
     except Exception as e:
         st.error(f"Error al cargar datos: {str(e)}")
         return pd.DataFrame(), pd.DataFrame()
-
-# Cargar datos
-df_reclamos, df_clientes, df_usuarios = load_data()
 
 # --------------------------
 # INTERFAZ PRINCIPAL
