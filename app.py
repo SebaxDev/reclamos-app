@@ -14,7 +14,7 @@ from reportlab.pdfgen import canvas
 import io
 
 # Imports de componentes
-from components.auth import render_login, check_authentication
+from components.auth import has_permission, check_authentication, render_login, render_user_info
 from components.navigation import render_navigation, render_user_info
 from components.metrics_dashboard import render_metrics_dashboard
 from utils.styles import get_main_styles
