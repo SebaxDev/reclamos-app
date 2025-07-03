@@ -43,7 +43,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 1. Función para detectar modo oscuro del sistema
+# 1. Función para detectar modo oscuro del sistema 
 def is_system_dark_mode():
     import platform
     if platform.system() == "Windows":
@@ -157,8 +157,6 @@ def load_data():
         st.error(f"Error al cargar datos: {str(e)}")
         return pd.DataFrame(), pd.DataFrame()
 
-# Cargar datos
-df_reclamos, df_clientes, df_usuarios = load_data()
 
 # --------------------------
 # INTERFAZ PRINCIPAL
