@@ -85,8 +85,8 @@ def init_google_sheets():
 
 # Inicializar conexión con Google Sheets
 with st.spinner("Conectando con Google Sheets..."):
-    sheet_reclamos, sheet_clientes = init_google_sheets()
-    if not sheet_reclamos or not sheet_clientes:
+    sheet_reclamos, sheet_clientes, sheet_usuarios = init_google_sheets()
+    if not all([sheet_reclamos, sheet_clientes, sheet_usuarios]):
         st.stop()
 
 # Verificar autenticación
@@ -117,7 +117,7 @@ def load_data():
             df_clientes = safe_normalize(df_clientes, col)
             df_reclamos = safe_normalize(df_reclamos, col)
             
-        return df_reclamos, df_clientes
+        return df_reclamos, df_clientes, df_usuarios
         
     except Exception as e:
         st.error(f"Error al cargar datos: {str(e)}")
