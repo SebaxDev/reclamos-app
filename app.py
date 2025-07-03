@@ -40,11 +40,47 @@ st.set_page_config(
     page_title="Fusion Reclamos App",
     page_icon="📋",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# Aplicar estilos
-modo_oscuro = st.sidebar.toggle("🌙 Modo oscuro", value=False)
+# =============================================
+# 👇 Código para modo oscuro automático (INICIO)
+# =============================================
+def check_system_dark_mode():
+    return """
+    <script>
+    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const isSystemDark = darkModeMediaQuery.matches;
+    window.parent.postMessage({
+        type: 'streamlit:setComponentValue',
+        value: isSystemDark
+    }, '*');
+    </script>
+    """
+
+# Inicializa la variable si no existe
+if 'modo_oscuro' not in st.session_state:
+    st.session_state.modo_oscuro = False
+
+# Ejecuta el JavaScript para detectar el modo del sistema
+st.components.v1.html(check_system_dark_mode(), height=0)
+
+# Actualiza el estado (opcional, para sincronizar con el toggle)
+modo_oscuro = st.session_state.modo_oscuro
+# =============================================
+# 👆 Código para modo oscuro automático (FIN)
+# =============================================
+
+# Sidebar (ahora con toggle sincronizado)
+with st.sidebar:
+    modo_oscuro = st.toggle(
+        "🌙 Modo oscuro",
+        value=st.session_state.modo_oscuro,  # Usa el valor detectado
+        key="dark_mode_toggle"
+    )
+    show_user_widget()  # Widget de usuario debajo del toggle
+
+# Aplica estilos
 st.markdown(get_main_styles(dark_mode=modo_oscuro), unsafe_allow_html=True)
 
 # --------------------------
@@ -133,10 +169,6 @@ df_reclamos, df_clientes, df_usuarios = load_data()
 
 # Header
 st.title("📋 Fusion Reclamos App")
-
-# Widget de usuario en el sidebar
-with st.sidebar:
-    show_user_widget()
 
 # Dashboard de métricas
 render_metrics_dashboard(df_reclamos)
