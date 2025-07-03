@@ -1,5 +1,5 @@
 import streamlit as st
-from auth import logout, check_authentication
+from components.auth import logout, check_authentication
 
 def show_user_widget():
     """Widget independiente que siempre funciona"""
