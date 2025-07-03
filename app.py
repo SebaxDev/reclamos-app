@@ -182,11 +182,6 @@ if opcion == "Inicio":
                 st.markdown(f"**👷 Técnico asignado:** {reclamo_vigente.get('Técnico', 'No asignado') or 'No asignado'}")
                 st.markdown(f"**🙍‍♂️ Atendido por:** {reclamo_vigente.get('Atendido por', 'N/A')}")
 
-                if st.button("👷 Ir al seguimiento técnico"):
-                    st.session_state.opcion = "Seguimiento técnico"
-                    st.session_state.nro_cliente = nro_cliente
-                    st.rerun()
-
     if not formulario_bloqueado:
         with st.form("reclamo_formulario", clear_on_submit=True):
             col1, col2 = st.columns(2)
