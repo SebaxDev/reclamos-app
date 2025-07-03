@@ -23,10 +23,6 @@ def safe_get_sheet_data(sheet, expected_columns):
         headers = data[0]
         rows = data[1:]
         
-        # Asegurar que tenemos el mismo número de columnas
-        if len(headers) != len(expected_columns):
-            st.warning(f"Advertencia: Número de columnas diferente. Esperadas: {len(expected_columns)}, Encontradas: {len(headers)}")
-        
         # Crear DataFrame
         df = pd.DataFrame(rows, columns=headers)
         
