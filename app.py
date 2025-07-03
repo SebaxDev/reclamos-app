@@ -699,16 +699,16 @@ elif opcion == "Imprimir reclamos":
                 y = height - 40
                 
                 # Encabezado
-                c.setFont("Helvetica-Bold", 16)
+                c.setFont("Helvetica-Bold", 18)
                 c.drawString(40, y, f"RECLAMOS SELECCIONADOS - {datetime.now().strftime('%d/%m/%Y')}")
                 y -= 30
 
                 for i, idx in enumerate(selected):
                     reclamo = df_merged.loc[idx]
-                    c.setFont("Helvetica-Bold", 12)
+                    c.setFont("Helvetica-Bold", 16)
                     c.drawString(40, y, f"Reclamo #{reclamo['Nº Cliente']}")
                     y -= 15
-                    c.setFont("Helvetica", 10)
+                    c.setFont("Helvetica", 13)
                     
                     lineas = [
                         f"Fecha: {reclamo['Fecha y hora']}",
@@ -730,7 +730,7 @@ elif opcion == "Imprimir reclamos":
                     if y < 100 and i < len(selected) - 1:
                         c.showPage()
                         y = height - 40
-                        c.setFont("Helvetica-Bold", 16)
+                        c.setFont("Helvetica-Bold", 18)
                         c.drawString(40, y, f"RECLAMOS SELECCIONADOS (cont.) - {datetime.now().strftime('%d/%m/%Y')}")
                         y -= 30
 
@@ -746,6 +746,63 @@ elif opcion == "Imprimir reclamos":
 
         elif not selected:
             st.info("Seleccioná al menos un reclamo para generar el PDF.")
+
+        # --- NUEVO BLOQUE: EXPORTAR TODOS LOS ACTIVOS ---
+        st.markdown("### 📦 Exportar todos los reclamos 'Pendiente' y 'En curso'")
+
+        todos_filtrados = df_merged[df_merged["Estado"].isin(["Pendiente", "En curso"])].copy()
+
+        if not todos_filtrados.empty:
+            if st.button("📄 Generar PDF de todos los reclamos activos", key="pdf_todos"):
+                with st.spinner("Generando PDF completo..."):
+                    buffer = io.BytesIO()
+                    c = canvas.Canvas(buffer, pagesize=A4)
+                    width, height = A4
+                    y = height - 40
+
+                    c.setFont("Helvetica-Bold", 18)
+                    c.drawString(40, y, f"TODOS LOS RECLAMOS ACTIVOS - {datetime.now().strftime('%d/%m/%Y')}")
+                    y -= 30
+
+                    for i, (_, reclamo) in enumerate(todos_filtrados.iterrows()):
+                        c.setFont("Helvetica-Bold", 16)
+                        c.drawString(40, y, f"#{reclamo['Nº Cliente']} - {reclamo['Nombre']}")
+                        y -= 15
+                        c.setFont("Helvetica", 13)
+                        lineas = [
+                                f"Fecha: {reclamo['Fecha y hora']}",
+                                f"Cliente: {reclamo['Nombre']}",
+                                f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
+                                f"Sector: {reclamo['Sector']} - Precinto: {reclamo.get('N° de Precinto', 'N/A')}",
+                                f"Tipo: {reclamo['Tipo de reclamo']}",
+                                f"Detalles: {reclamo['Detalles'][:100]}..." if len(reclamo['Detalles']) > 100 else f"Detalles: {reclamo['Detalles']}",
+                        ]
+                        for linea in lineas:
+                            c.drawString(40, y, linea)
+                            y -= 12
+
+                        y -= 10
+                        c.line(40, y, width-40, y)
+                        y -= 15
+
+                        if y < 100:
+                            c.showPage()
+                            y = height - 40
+                            c.setFont("Helvetica-Bold", 18)
+                            c.drawString(40, y, f"RECLAMOS ACTIVOS (cont.) - {datetime.now().strftime('%d/%m/%Y')}")
+                            y -= 30
+
+                    c.save()
+                    buffer.seek(0)
+
+                    st.download_button(
+                        label="📥 Descargar TODOS los reclamos activos en PDF",
+                        data=buffer,
+                        file_name="reclamos_activos_completo.pdf",
+                        mime="application/pdf"
+                    )
+        else:
+            st.info("🎉 No hay reclamos activos actualmente.")
 
     except Exception as e:
         st.error(f"❌ Error al generar PDF: {str(e)}")
