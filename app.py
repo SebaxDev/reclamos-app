@@ -94,6 +94,9 @@ with st.spinner("Conectando con Google Sheets..."):
 if not check_authentication():
     render_login(sheet_usuarios)
     st.stop()
+# --- 👇 NUEVO: Widget de usuario en el sidebar ---
+with st.sidebar:
+    show_user_widget()  # ✅ Se mostrará arriba de todo en el sidebar
 
 # Obtener información del usuario actual
 user_info = st.session_state.auth.get('user_info', {})
@@ -133,7 +136,6 @@ df_reclamos, df_clientes, df_usuarios = load_data()
 
 # Header
 st.title("📋 Fusion Reclamos App")
-show_user_widget()
 
 # Dashboard de métricas
 render_metrics_dashboard(df_reclamos)
