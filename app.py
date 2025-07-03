@@ -638,13 +638,12 @@ elif opcion == "Imprimir reclamos":
                         
                         for i, (_, reclamo) in enumerate(reclamos_filtrados.iterrows()):
                             c.setFont("Helvetica-Bold", 16)
-                            c.drawString(40, y, f"Reclamo #{reclamo['Nº Cliente']}")
+                            c.drawString(40, y, f"#{reclamo['Nº Cliente']} - {reclamo['Nombre']}")
                             y -= 15
                             c.setFont("Helvetica", 13)
                             
                             lineas = [
                                 f"Fecha: {reclamo['Fecha y hora']}",
-                                f"Cliente: {reclamo['Nombre']}",
                                 f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
                                 f"Sector: {reclamo['Sector']} - Precinto: {reclamo.get('N° de Precinto', 'N/A')}",
                                 f"Tipo: {reclamo['Tipo de reclamo']}",
@@ -706,13 +705,12 @@ elif opcion == "Imprimir reclamos":
                 for i, idx in enumerate(selected):
                     reclamo = df_merged.loc[idx]
                     c.setFont("Helvetica-Bold", 16)
-                    c.drawString(40, y, f"Reclamo #{reclamo['Nº Cliente']}")
+                    c.drawString(40, y, f"#{reclamo['Nº Cliente']} - {reclamo['Nombre']}")
                     y -= 15
                     c.setFont("Helvetica", 13)
                     
                     lineas = [
                         f"Fecha: {reclamo['Fecha y hora']}",
-                        f"Cliente: {reclamo['Nombre']}",
                         f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
                         f"Sector: {reclamo['Sector']} - Precinto: {reclamo.get('N° de Precinto', 'N/A')}",
                         f"Tipo: {reclamo['Tipo de reclamo']}",
@@ -771,7 +769,6 @@ elif opcion == "Imprimir reclamos":
                         c.setFont("Helvetica", 13)
                         lineas = [
                                 f"Fecha: {reclamo['Fecha y hora']}",
-                                f"Cliente: {reclamo['Nombre']}",
                                 f"Dirección: {reclamo['Dirección']} - Tel: {reclamo['Teléfono']}",
                                 f"Sector: {reclamo['Sector']} - Precinto: {reclamo.get('N° de Precinto', 'N/A')}",
                                 f"Tipo: {reclamo['Tipo de reclamo']}",
