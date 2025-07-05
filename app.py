@@ -188,18 +188,23 @@ if opcion == "Inicio" and has_permission('inicio'):
     nro_cliente = st.text_input("🔢 N° de Cliente", placeholder="Ingresa el número de cliente").strip()
     cliente_existente = None
     formulario_bloqueado = False
+    reclamo_guardado = False
+    cliente_nuevo = False
 
-    # Validación de cliente existente
     if "Nº Cliente" in df_clientes.columns and nro_cliente:
         df_clientes["Nº Cliente"] = df_clientes["Nº Cliente"].astype(str).str.strip()
         df_reclamos["Nº Cliente"] = df_reclamos["Nº Cliente"].astype(str).str.strip()
 
         match = df_clientes[df_clientes["Nº Cliente"] == nro_cliente]
 
-        # Verificar reclamos activos
         reclamos_activos = df_reclamos[
             (df_reclamos["Nº Cliente"] == nro_cliente) &
-            (df_reclamos["Estado"].isin(["Pendiente", "En curso"]))
+            (
+                df_reclamos["Estado"].isin(["Pendiente", "En curso"]) |
+                (
+                    df_reclamos["Tipo de reclamo"].str.strip().str.lower() == "desconexion a pedido"
+                )
+            )
         ]
 
         if not match.empty:
@@ -209,7 +214,7 @@ if opcion == "Inicio" and has_permission('inicio'):
             st.info("ℹ️ Cliente no encontrado. Se cargará como Cliente Nuevo.")
 
         if not reclamos_activos.empty:
-            st.error("⚠️ Este cliente ya tiene un reclamo sin resolver. No se puede cargar uno nuevo hasta que se cierre el anterior.")
+            st.error("⚠️ Este cliente ya tiene un reclamo sin resolver o una desconexión activa. No se puede cargar uno nuevo.")
             formulario_bloqueado = True
 
             reclamo_vigente = reclamos_activos.sort_values("Fecha y hora", ascending=False).iloc[0]
@@ -219,7 +224,7 @@ if opcion == "Inicio" and has_permission('inicio'):
                 st.markdown(f"**👤 Cliente:** {reclamo_vigente['Nombre']}")
                 st.markdown(f"**📌 Tipo de reclamo:** {reclamo_vigente['Tipo de reclamo']}")
                 st.markdown(f"**📝 Detalles:** {reclamo_vigente['Detalles'][:250]}{'...' if len(reclamo_vigente['Detalles']) > 250 else ''}")
-                st.markdown(f"**⚙️ Estado:** {reclamo_vigente['Estado']}")
+                st.markdown(f"**⚙️ Estado:** {reclamo_vigente['Estado'] or 'Sin estado'}")
                 st.markdown(f"**👷 Técnico asignado:** {reclamo_vigente.get('Técnico', 'No asignado') or 'No asignado'}")
                 st.markdown(f"**🙍‍♂️ Atendido por:** {reclamo_vigente.get('Atendido por', 'N/A')}")
 
@@ -227,64 +232,65 @@ if opcion == "Inicio" and has_permission('inicio'):
         with st.form("reclamo_formulario", clear_on_submit=True):
             col1, col2 = st.columns(2)
 
-            # Campos del formulario con valores por defecto si el cliente existe
             if cliente_existente:
                 with col1:
-                    sector = st.text_input("🏩 Sector / Zona", value=cliente_existente.get("Sector", ""))
+                    nombre = st.text_input("👤 Nombre del Cliente", value=cliente_existente.get("Nombre", ""))
                     direccion = st.text_input("📍 Dirección", value=cliente_existente.get("Dirección", ""))
                 with col2:
-                    nombre = st.text_input("👤 Nombre del Cliente", value=cliente_existente.get("Nombre", ""))
                     telefono = st.text_input("📞 Teléfono", value=cliente_existente.get("Teléfono", ""))
+                    sector = st.text_input("🏩 Sector / Zona", value=cliente_existente.get("Sector", ""))
             else:
                 with col1:
-                    sector = st.text_input("🏩 Sector / Zona", placeholder="Coloque número de sector")
+                    nombre = st.text_input("👤 Nombre del Cliente", placeholder="Nombre completo")
                     direccion = st.text_input("📍 Dirección", placeholder="Dirección completa")
                 with col2:
-                    nombre = st.text_input("👤 Nombre del Cliente", placeholder="Nombre completo")
                     telefono = st.text_input("📞 Teléfono", placeholder="Número de contacto")
+                    sector = st.text_input("🏩 Sector / Zona", placeholder="Coloque número de sector")
 
             tipo_reclamo = st.selectbox("📌 Tipo de Reclamo", TIPOS_RECLAMO)
             detalles = st.text_area("📝 Detalles del Reclamo", placeholder="Describe el problema o solicitud...", height=100)
 
             col3, col4 = st.columns(2)
             with col3:
-                precinto = st.text_input("🔒 N° de Precinto (opcional)", 
-                                       value=cliente_existente.get("N° de Precinto", "").strip() if cliente_existente else "",
-                                       placeholder="Número de precinto")
+                precinto = st.text_input("🔒 N° de Precinto (opcional)",
+                                         value=cliente_existente.get("N° de Precinto", "").strip() if cliente_existente else "",
+                                         placeholder="Número de precinto")
             with col4:
                 atendido_por = st.text_input("👤 Atendido por", placeholder="Nombre de quien atiende", value=st.session_state.get("current_user", ""))
 
             enviado = st.form_submit_button("✅ Guardar Reclamo", use_container_width=True)
 
         if enviado:
-            # Validación de campos obligatorios
             if not nro_cliente:
                 st.error("⚠️ Debes ingresar un número de cliente.")
-            elif not all([nombre.strip(), direccion.strip(), atendido_por.strip()]):
-                st.error("⚠️ Los campos marcados con asterisco (*) son obligatorios.")
+            elif not all([nombre.strip(), direccion.strip(), sector.strip(), tipo_reclamo.strip(), atendido_por.strip()]):
+                st.error("⚠️ Todos los campos obligatorios deben estar completos.")
             else:
                 with st.spinner("Guardando reclamo..."):
                     try:
-                        # Preparar datos
                         argentina = pytz.timezone("America/Argentina/Buenos_Aires")
                         fecha_hora = datetime.now(argentina).strftime("%d/%m/%Y %H:%M:%S")
+
+                        estado_reclamo = "" if tipo_reclamo.strip().lower() == "desconexion a pedido" else "Pendiente"
 
                         fila_reclamo = [
                             fecha_hora, nro_cliente, sector, nombre.upper(),
                             direccion.upper(), telefono, tipo_reclamo,
-                            detalles.upper(), "Pendiente", "", precinto, atendido_por.upper()
+                            detalles.upper(), estado_reclamo, "", precinto, atendido_por.upper()
                         ]
 
-                        # Operación segura con API Manager
                         success, error = api_manager.safe_sheet_operation(
                             sheet_reclamos.append_row,
                             fila_reclamo
                         )
 
                         if success:
-                            st.success("✅ Reclamo guardado correctamente.")
+                            reclamo_guardado = True
+                            st.success(f"✅ Reclamo cargado para el cliente {nro_cliente} - {tipo_reclamo.upper()}")
 
-                            # Agregar cliente si es nuevo
+                            if tipo_reclamo.strip().lower() == "desconexion a pedido":
+                                st.warning("📄 Este reclamo es una Desconexión a Pedido. **Y NO CUENTA como reclamo activo.**")
+
                             if nro_cliente not in df_clientes["Nº Cliente"].values:
                                 fila_cliente = [nro_cliente, sector, nombre.upper(), direccion.upper(), telefono, precinto]
                                 success_cliente, _ = api_manager.safe_sheet_operation(
@@ -292,11 +298,10 @@ if opcion == "Inicio" and has_permission('inicio'):
                                     fila_cliente
                                 )
                                 if success_cliente:
-                                    st.info("🗂️ Nuevo cliente agregado a la base de datos.")
+                                    cliente_nuevo = True
 
-                            # Limpiar cache y refrescar
                             st.cache_data.clear()
-                            time.sleep(1)
+                            time.sleep(5)
                             st.rerun()
                         else:
                             st.error(f"❌ Error al guardar: {error}")
@@ -1165,28 +1170,44 @@ elif opcion == "Cierre de Reclamos" and user_role == 'admin':
     st.markdown('</div>', unsafe_allow_html=True)
 
 # --------------------------
-# FOOTER
+# NUEVO FOOTER - RESUMEN DE LA JORNADA
 # --------------------------
 st.markdown("---")
-st.markdown("### 📊 Estadísticas de la sesión")
+st.markdown('<div class="section-container">', unsafe_allow_html=True)
+st.markdown("### 📋 Resumen de la jornada")
 
-# Mostrar estadísticas de API de forma segura
-try:
-    api_stats = api_manager.get_api_stats()
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("🔄 Llamadas a la API", api_stats.get('total_calls', 0))
-    
-    with col2:
-        if api_stats.get('last_call', 0) > 0:
-            last_call_time = datetime.fromtimestamp(api_stats['last_call']).strftime("%H:%M:%S")
-            st.metric("🕐 Última llamada", last_call_time)
-        else:
-            st.metric("🕐 Última llamada", "N/A")
-    
-    with col3:
-        st.metric("⚠️ Errores API", api_stats.get('error_count', 0))
+# Conversión de fechas
+df_reclamos["Fecha y hora"] = pd.to_datetime(df_reclamos["Fecha y hora"], errors="coerce")
+hoy = datetime.now().date()
+df_hoy = df_reclamos[df_reclamos["Fecha y hora"].dt.date == hoy]
 
-except Exception as e:
-    st.error(f"Error al cargar estadísticas: {str(e)}")
+# Reclamos en curso
+df_en_curso = df_reclamos[df_reclamos["Estado"] == "En curso"].copy()
+
+col1, col2 = st.columns(2)
+col1.metric("📌 Reclamos cargados hoy", len(df_hoy))
+col2.metric("⚙️ Reclamos en curso", len(df_en_curso))
+
+# Técnicos por reclamo
+st.markdown("### 👷 Reclamos en curso por técnicos")
+
+if not df_en_curso.empty and "Técnico" in df_en_curso.columns:
+    # Normalizar nombres y filtrar no vacíos
+    df_en_curso["Técnico"] = df_en_curso["Técnico"].fillna("").astype(str)
+    df_en_curso = df_en_curso[df_en_curso["Técnico"].str.strip() != ""]
+
+    # Crear un set inmutable de técnicos asignados por reclamo (para detectar duplicados)
+    df_en_curso["tecnicos_set"] = df_en_curso["Técnico"].apply(
+        lambda x: tuple(sorted([t.strip().capitalize() for t in x.split(",") if t.strip()]))
+    )
+
+    # Agrupar por ese conjunto de técnicos
+    conteo_grupos = df_en_curso.groupby("tecnicos_set").size().reset_index(name="Cantidad")
+
+    for fila in conteo_grupos.itertuples():
+        tecnicos = ", ".join(fila.tecnicos_set)
+        st.markdown(f"- 👥 **{tecnicos}** → {fila.Cantidad} reclamos")
+else:
+    st.info("No hay técnicos asignados actualmente a reclamos en curso.")
+
+st.markdown('</div>', unsafe_allow_html=True)
